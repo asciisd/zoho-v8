@@ -1,0 +1,49 @@
+{
+    "name": "asciisd/zoho-v8",
+    "description": "Minimal Laravel wrapper for Zoho CRM PHP SDK 8.0",
+    "type": "library",
+    "keywords": ["laravel", "zoho", "crm", "zoho-crm", "api", "wrapper"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Ascii SD",
+            "email": "aemaddin@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^11.0",
+        "illuminate/database": "^11.0",
+        "illuminate/cache": "^11.0",
+        "illuminate/console": "^11.0",
+        "illuminate/routing": "^11.0",
+        "zohocrm/php-sdk-8.0": "^4.0.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0",
+        "phpunit/phpunit": "^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Asciisd\\ZohoV8\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Asciisd\\ZohoV8\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Asciisd\\ZohoV8\\ZohoServiceProvider"
+            ],
+            "aliases": {
+                "Zoho": "Asciisd\\ZohoV8\\Facades\\Zoho"
+            }
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
+
