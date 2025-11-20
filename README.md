@@ -47,17 +47,99 @@ Run the migration to create the OAuth tokens table:
 php artisan migrate
 ```
 
+### Get Zoho API Credentials
+
+Before configuring the package, you need to create a Zoho API Client to get your OAuth credentials.
+
+> **Don't have a Zoho account?** Sign up at [Zoho CRM](https://www.zoho.com/crm/signup.html) and choose your preferred data center during registration.
+
+#### Step 1: Choose Your Data Center
+
+Visit the [Zoho API Console](https://api-console.zoho.com/add) and sign in with the **correct data center** where your Zoho CRM account is registered:
+
+| Data Center | CRM URL | API Console Region |
+|-------------|---------|-------------------|
+| **US** (United States) | crm.zoho.com | accounts.zoho.com |
+| **EU** (Europe) | crm.zoho.eu | accounts.zoho.eu |
+| **IN** (India) | crm.zoho.in | accounts.zoho.in |
+| **CN** (China) | crm.zoho.com.cn | accounts.zoho.com.cn |
+| **JP** (Japan) | crm.zoho.jp | accounts.zoho.jp |
+| **AU** (Australia) | crm.zoho.com.au | accounts.zoho.com.au |
+| **CA** (Canada) | crm.zohocloud.ca | accounts.zohocloud.ca |
+
+**Important:** The data center you choose must match where your Zoho CRM data is stored. Check your Zoho CRM URL to determine your data center.
+
+#### Step 2: Create API Client
+
+1. Sign in to the [Zoho API Console](https://api-console.zoho.com)
+2. Click **"Add Client"** or **"Get Started"**
+3. Choose **"Server-based Applications"**
+4. Fill in the required details:
+   - **Client Name**: Your application name (e.g., "Laravel Zoho Integration")
+   - **Homepage URL**: Your website URL (e.g., `https://yourapp.com`)
+   - **Authorized Redirect URIs**: Your callback URL (e.g., `https://yourapp.test/zoho/callback` or `http://localhost:8000/zoho/callback` for local development)
+
+5. Click **"Create"**
+
+#### Step 3: Copy Credentials
+
+After creating the client, you'll see:
+
+- **Client ID** - A long string like `1000.XXXXXXXXXXXXX`
+- **Client Secret** - Your secret key
+
+**Keep these credentials secure!** Never commit them to version control.
+
+#### Step 4: Configure OAuth Scopes
+
+When setting up authentication, the package will request these scopes by default:
+
+```
+ZohoCRM.modules.ALL
+ZohoCRM.settings.ALL
+ZohoCRM.users.ALL
+```
+
+For additional features, you may need:
+
+- `ZohoCRM.org.ALL` - Organization information
+- `ZohoCRM.bulk.ALL` - Bulk operations
+- `ZohoCRM.notifications.ALL` - Webhooks and notifications
+
 ### Configure Environment Variables
 
-Add the following to your `.env` file:
+Add the credentials to your `.env` file:
 
 ```env
-ZOHO_CLIENT_ID=your_client_id
-ZOHO_CLIENT_SECRET=your_client_secret
-ZOHO_REDIRECT_URI=your_redirect_uri
+ZOHO_CLIENT_ID=1000.XXXXXXXXXXXXX
+ZOHO_CLIENT_SECRET=your_secret_here
+ZOHO_REDIRECT_URI=https://yourapp.test/zoho/callback
 ZOHO_DATA_CENTER=US
 ZOHO_ENVIRONMENT=production
 ```
+
+**For Local Development:**
+
+```env
+ZOHO_REDIRECT_URI=http://localhost:8000/zoho/callback
+# or
+ZOHO_REDIRECT_URI=https://yourapp.test/zoho/callback
+```
+
+Make sure the redirect URI matches exactly what you entered in the Zoho API Console (including protocol and port).
+
+### Setup Checklist
+
+Before running the setup command, ensure:
+
+- [ ] You have a Zoho CRM account
+- [ ] You've signed in to the correct data center in API Console
+- [ ] You've created a Server-based Application client
+- [ ] Your `ZOHO_CLIENT_ID` is set in `.env`
+- [ ] Your `ZOHO_CLIENT_SECRET` is set in `.env`
+- [ ] Your `ZOHO_REDIRECT_URI` exactly matches the API Console
+- [ ] Your `ZOHO_DATA_CENTER` matches your CRM URL
+- [ ] You've run `php artisan migrate`
 
 ## Quick Start
 
@@ -70,6 +152,7 @@ php artisan zoho:setup
 ```
 
 This interactive command will:
+
 1. Generate an authorization URL
 2. Accept your grant token/code
 3. Generate and store access & refresh tokens
@@ -403,13 +486,13 @@ try {
 
 The package supports all Zoho CRM data centers:
 
-- `US` - United States (https://www.zohoapis.com)
-- `EU` - Europe (https://www.zohoapis.eu)
-- `IN` - India (https://www.zohoapis.in)
-- `CN` - China (https://www.zohoapis.com.cn)
-- `JP` - Japan (https://www.zohoapis.jp)
-- `AU` - Australia (https://www.zohoapis.com.au)
-- `CA` - Canada (https://www.zohoapis.ca)
+- `US` - United States (<https://www.zohoapis.com>)
+- `EU` - Europe (<https://www.zohoapis.eu>)
+- `IN` - India (<https://www.zohoapis.in>)
+- `CN` - China (<https://www.zohoapis.com.cn>)
+- `JP` - Japan (<https://www.zohoapis.jp>)
+- `AU` - Australia (<https://www.zohoapis.com.au>)
+- `CA` - Canada (<https://www.zohoapis.ca>)
 
 Set your data center in `.env`:
 
@@ -444,6 +527,42 @@ php artisan zoho:test Accounts --operation=read
 
 ## Troubleshooting
 
+### Wrong Data Center Error
+
+**Error:** `Invalid OAuth credentials` or `Authentication failed`
+
+**Solution:** Make sure your `ZOHO_DATA_CENTER` in `.env` matches where your Zoho CRM account is registered:
+
+```bash
+# Check your Zoho CRM URL:
+# crm.zoho.com → ZOHO_DATA_CENTER=US
+# crm.zoho.eu → ZOHO_DATA_CENTER=EU
+# crm.zoho.in → ZOHO_DATA_CENTER=IN
+# etc.
+```
+
+The API Console you use to create credentials **must match** your data center.
+
+### Redirect URI Mismatch
+
+**Error:** `redirect_uri_mismatch` during OAuth setup
+
+**Solution:**
+
+1. Check that `ZOHO_REDIRECT_URI` in `.env` **exactly matches** what you entered in Zoho API Console
+2. Include the protocol (`http://` or `https://`)
+3. Include the port if using non-standard ports (`:8000`, `:3000`, etc.)
+4. No trailing slashes unless you added them in the API Console
+
+```env
+# ✅ Correct
+ZOHO_REDIRECT_URI=https://yourapp.test/zoho/callback
+ZOHO_REDIRECT_URI=http://localhost:8000/zoho/callback
+
+# ❌ Wrong (if you registered without port)
+ZOHO_REDIRECT_URI=https://yourapp.test:443/zoho/callback
+```
+
 ### Token Expired Error
 
 If you get a token expired error, refresh the token:
@@ -460,9 +579,138 @@ Make sure your `.env` file has the correct credentials:
 php artisan zoho:auth status
 ```
 
+If credentials are invalid:
+
+1. Verify `ZOHO_CLIENT_ID` and `ZOHO_CLIENT_SECRET` from API Console
+2. Check that you're using the correct data center
+3. Run `php artisan zoho:setup` to re-authenticate
+
+### Grant Token Expired
+
+**Error:** `invalid_code` or `Grant token has expired`
+
+**Solution:** Grant tokens from Zoho expire quickly (usually within 2-3 minutes). When running `php artisan zoho:setup`:
+
+1. Generate the authorization URL
+2. **Immediately** open it in your browser
+3. Copy the code from the redirect URL
+4. **Quickly** paste it into the terminal
+
+If it expires, just run `php artisan zoho:setup` again.
+
 ### Rate Limit Exceeded
 
 Zoho CRM has API rate limits. The package will throw a `ZohoApiException` with code 429. Implement retry logic with exponential backoff.
+
+**Rate Limits:**
+
+- 100 API calls per minute per user
+- 5,000 API calls per day (varies by plan)
+
+### Connection Timeout
+
+**Error:** `Connection timed out` or `Failed to connect`
+
+**Solution:**
+
+1. Check your internet connection
+2. Verify your firewall allows outbound HTTPS connections
+3. Check if Zoho services are down: [Zoho Status](https://status.zoho.com)
+4. Try a different data center if you have a regional account
+
+### Cache Issues
+
+If tokens aren't refreshing properly:
+
+```bash
+# Clear Laravel cache
+php artisan cache:clear
+
+# Clear Zoho token cache specifically
+php artisan zoho:token:refresh --clear-cache
+```
+
+## FAQ
+
+### How do I know which data center I'm in?
+
+Check the URL you use to access Zoho CRM:
+
+- `crm.zoho.com` = US
+- `crm.zoho.eu` = EU
+- `crm.zoho.in` = IN
+- And so on...
+
+### Can I use the same credentials for multiple environments?
+
+Yes, but you should:
+
+1. Create separate API clients for development and production
+2. Use different redirect URIs for each environment
+3. Store credentials separately in each `.env` file
+
+### What scopes do I need?
+
+For basic CRUD operations:
+
+```
+ZohoCRM.modules.ALL
+ZohoCRM.settings.ALL
+ZohoCRM.users.ALL
+```
+
+For advanced features (webhooks, bulk operations):
+
+```
+ZohoCRM.modules.ALL
+ZohoCRM.settings.ALL
+ZohoCRM.users.ALL
+ZohoCRM.org.ALL
+ZohoCRM.bulk.ALL
+ZohoCRM.notifications.ALL
+```
+
+The `zoho:setup` command uses the default scopes, but you can specify custom scopes when generating the authorization URL.
+
+### How long do tokens last?
+
+- **Access Token**: 1 hour (auto-refreshed by the package)
+- **Refresh Token**: No expiration (unless revoked)
+- **Grant Token**: 2-3 minutes (use immediately)
+
+### Can I test without SSL locally?
+
+Yes, for local development you can use:
+
+```env
+ZOHO_REDIRECT_URI=http://localhost:8000/zoho/callback
+```
+
+However, for production, always use HTTPS.
+
+### Do I need to create a route for the redirect URI?
+
+No, the package doesn't require an actual route at the redirect URI. The redirect URI is only used during the OAuth setup process to receive the authorization code, which you'll copy manually from the browser's address bar.
+
+If you want to automate this, you can create a route that captures the code and displays it, but it's not required for the package to work.
+
+### How do I switch data centers?
+
+1. Update `ZOHO_DATA_CENTER` in `.env`
+2. Clear tokens: `php artisan zoho:token:refresh --clear-cache`
+3. Re-authenticate: `php artisan zoho:setup`
+
+Note: Your data must exist in the target data center.
+
+### Can I use this package with Zoho Sandbox?
+
+Yes! Set in your `.env`:
+
+```env
+ZOHO_ENVIRONMENT=sandbox
+```
+
+Then authenticate with your sandbox credentials.
 
 ## Contributing
 
@@ -470,7 +718,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Security
 
-If you discover any security-related issues, please email aemaddin@gmail.com instead of using the issue tracker.
+If you discover any security-related issues, please email <aemaddin@gmail.com> instead of using the issue tracker.
 
 ## Credits
 
@@ -483,9 +731,8 @@ The MIT License (MIT). Please see [License File](LICENSE.md) for more informatio
 
 ## Support
 
-For support, please open an issue on GitHub or contact aemaddin@gmail.com.
+For support, please open an issue on GitHub or contact <aemaddin@gmail.com>.
 
 ## Changelog
 
 Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
-

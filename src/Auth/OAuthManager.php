@@ -113,7 +113,7 @@ class OAuthManager
     /**
      * Refresh access token using refresh token.
      */
-    public function refreshAccessToken(string $refreshToken = null): array
+    public function refreshAccessToken(?string $refreshToken = null): array
     {
         try {
             if (!$refreshToken) {
@@ -191,7 +191,7 @@ class OAuthManager
     /**
      * Revoke access token.
      */
-    public function revokeToken(string $token = null): bool
+    public function revokeToken(?string $token = null): bool
     {
         try {
             if (!$token) {
