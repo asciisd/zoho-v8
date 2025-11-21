@@ -16,6 +16,11 @@ abstract class ZohoModel
     protected const MODULE_API_NAME = '';
 
     /**
+     * Cache for module field names.
+     */
+    protected static array $fieldNamesCache = [];
+
+    /**
      * Get the module API name.
      */
     protected static function getModuleApiName(): string
@@ -24,6 +29,7 @@ abstract class ZohoModel
         if (empty($class::MODULE_API_NAME)) {
             throw ZohoApiException::invalidModule('Module API name not defined');
         }
+
         return $class::MODULE_API_NAME;
     }
 
@@ -42,7 +48,85 @@ abstract class ZohoModel
     {
         $baseUrl = static::getOAuthManager()->getApiUrl();
         $version = config('zoho.api_version', 'v8');
+
         return "{$baseUrl}/crm/{$version}";
+    }
+
+    /**
+     * Get all field names for the module.
+     */
+    protected static function getModuleFieldNames(): string
+    {
+        $module = static::getModuleApiName();
+
+        // Check if we have cached field names for this module
+        if (isset(static::$fieldNamesCache[$module])) {
+            return static::$fieldNamesCache[$module];
+        }
+
+        try {
+            // Fetch field metadata from Zoho CRM
+            $response = static::makeRequest('get', "/settings/fields?module={$module}");
+
+            if (isset($response['fields']) && is_array($response['fields'])) {
+                // Extract api_name from each field
+                // Zoho API v8 has a limit of 50 fields per request
+                $maxFields = config('zoho.max_fields_per_request', 50);
+
+                $fieldNames = collect($response['fields'])
+                    ->pluck('api_name')
+                    ->filter()
+                    ->take($maxFields)
+                    ->implode(',');
+
+                // Cache the field names
+                static::$fieldNamesCache[$module] = $fieldNames;
+
+                return $fieldNames;
+            }
+        } catch (\Exception $e) {
+            // If field metadata fetch fails, log the error and return default fields
+            Log::warning("Failed to fetch field metadata for {$module}: {$e->getMessage()}");
+        }
+
+        // Fallback to common fields if metadata fetch fails
+        return static::getDefaultFields();
+    }
+
+    /**
+     * Get default common fields as fallback.
+     */
+    protected static function getDefaultFields(): string
+    {
+        return 'id,Created_Time,Modified_Time,Created_By,Modified_By,Owner';
+    }
+
+    /**
+     * Clear cached field names for the module.
+     */
+    public static function clearFieldCache(): void
+    {
+        $module = static::getModuleApiName();
+        unset(static::$fieldNamesCache[$module]);
+    }
+
+    /**
+     * Clear all cached field names.
+     */
+    public static function clearAllFieldCache(): void
+    {
+        static::$fieldNamesCache = [];
+    }
+
+    /**
+     * Get field metadata for the module.
+     */
+    public static function getFieldMetadata(): array
+    {
+        $module = static::getModuleApiName();
+        $response = static::makeRequest('get', "/settings/fields?module={$module}");
+
+        return $response['fields'] ?? [];
     }
 
     /**
@@ -52,23 +136,45 @@ abstract class ZohoModel
     {
         try {
             $accessToken = static::getOAuthManager()->getValidAccessToken();
-            $url = static::getApiUrl() . $endpoint;
+            $url = static::getApiUrl().$endpoint;
 
-            $response = Http::withToken($accessToken)
+            $http = Http::withToken($accessToken)
                 ->withHeaders([
                     'Content-Type' => 'application/json',
-                ])
-                ->$method($url, $data);
+                ]);
 
-            if (!$response->successful()) {
-                $error = $response->json('message', 'API request failed');
+            // Handle GET requests differently - don't pass body data
+            if (strtolower($method) === 'get') {
+                $response = $http->get($url);
+            } else {
+                $response = $http->$method($url, $data);
+            }
+
+            if (! $response->successful()) {
+                $responseBody = $response->json();
+                $error = $responseBody['message'] ?? $responseBody['error'] ?? 'API request failed';
                 $code = $response->status();
+
+                // Log detailed error information
+                Log::error('Zoho API request failed', [
+                    'url' => $url,
+                    'method' => $method,
+                    'status' => $code,
+                    'response' => $responseBody,
+                    'request_data' => $data,
+                ]);
+
                 throw ZohoApiException::requestFailed($error, $code);
             }
 
             return $response->json();
         } catch (\Exception $e) {
-            Log::error('Zoho API request failed: ' . $e->getMessage());
+            if (! ($e instanceof ZohoApiException)) {
+                Log::error('Zoho API request failed: '.$e->getMessage(), [
+                    'url' => $url ?? 'unknown',
+                    'method' => $method,
+                ]);
+            }
             throw $e;
         }
     }
@@ -79,7 +185,7 @@ abstract class ZohoModel
     public static function create(array $data): array
     {
         $module = static::getModuleApiName();
-        
+
         $payload = [
             'data' => [$data],
         ];
@@ -96,11 +202,16 @@ abstract class ZohoModel
     /**
      * Find a record by ID.
      */
-    public static function find(string $id): array
+    public static function find(string $id, array $params = []): array
     {
         $module = static::getModuleApiName();
-        
-        $response = static::makeRequest('get', "/{$module}/{$id}");
+
+        $queryParams = array_merge([
+            'fields' => static::getModuleFieldNames(),
+        ], $params);
+
+        $queryString = http_build_query($queryParams);
+        $response = static::makeRequest('get', "/{$module}/{$id}?{$queryString}");
 
         if (isset($response['data'][0])) {
             return $response['data'][0];
@@ -115,16 +226,17 @@ abstract class ZohoModel
     public static function all(array $criteria = []): Collection
     {
         $module = static::getModuleApiName();
-        
+
         $params = array_merge([
             'per_page' => config('zoho.pagination.per_page', 200),
+            'fields' => static::getModuleFieldNames(),
         ], $criteria);
 
         $queryString = http_build_query($params);
         $response = static::makeRequest('get', "/{$module}?{$queryString}");
 
         $records = $response['data'] ?? [];
-        
+
         return collect($records);
     }
 
@@ -134,10 +246,10 @@ abstract class ZohoModel
     public static function update(string $id, array $data): array
     {
         $module = static::getModuleApiName();
-        
+
         $payload = [
             'data' => [
-                array_merge(['id' => $id], $data)
+                array_merge(['id' => $id], $data),
             ],
         ];
 
@@ -156,10 +268,10 @@ abstract class ZohoModel
     public static function delete(string $id): bool
     {
         $module = static::getModuleApiName();
-        
+
         $response = static::makeRequest('delete', "/{$module}/{$id}");
 
-        return isset($response['data'][0]['status']) 
+        return isset($response['data'][0]['status'])
             && $response['data'][0]['status'] === 'success';
     }
 
@@ -169,17 +281,18 @@ abstract class ZohoModel
     public static function search(string $criteria, array $params = []): Collection
     {
         $module = static::getModuleApiName();
-        
+
         $queryParams = array_merge([
             'criteria' => $criteria,
             'per_page' => config('zoho.pagination.per_page', 200),
+            'fields' => static::getModuleFieldNames(),
         ], $params);
 
         $queryString = http_build_query($queryParams);
         $response = static::makeRequest('get', "/{$module}/search?{$queryString}");
 
         $records = $response['data'] ?? [];
-        
+
         return collect($records);
     }
 
@@ -205,12 +318,12 @@ abstract class ZohoModel
     public static function upsert(array $data, array $duplicateCheckFields = []): array
     {
         $module = static::getModuleApiName();
-        
+
         $payload = [
             'data' => [$data],
         ];
 
-        if (!empty($duplicateCheckFields)) {
+        if (! empty($duplicateCheckFields)) {
             $payload['duplicate_check_fields'] = $duplicateCheckFields;
         }
 
@@ -226,14 +339,19 @@ abstract class ZohoModel
     /**
      * Get related records.
      */
-    public static function getRelatedRecords(string $id, string $relatedModule): Collection
+    public static function getRelatedRecords(string $id, string $relatedModule, array $params = []): Collection
     {
         $module = static::getModuleApiName();
-        
-        $response = static::makeRequest('get', "/{$module}/{$id}/{$relatedModule}");
+
+        $queryParams = array_merge([
+            'fields' => static::getModuleFieldNames(),
+        ], $params);
+
+        $queryString = http_build_query($queryParams);
+        $response = static::makeRequest('get', "/{$module}/{$id}/{$relatedModule}?{$queryString}");
 
         $records = $response['data'] ?? [];
-        
+
         return collect($records);
     }
 
@@ -243,7 +361,7 @@ abstract class ZohoModel
     public static function updateMultiple(array $records): array
     {
         $module = static::getModuleApiName();
-        
+
         $payload = [
             'data' => $records,
         ];
@@ -259,7 +377,7 @@ abstract class ZohoModel
     public static function deleteMultiple(array $ids): array
     {
         $module = static::getModuleApiName();
-        
+
         $idsString = implode(',', $ids);
         $response = static::makeRequest('delete', "/{$module}?ids={$idsString}");
 
@@ -272,12 +390,16 @@ abstract class ZohoModel
     public static function getDeletedRecords(array $params = []): Collection
     {
         $module = static::getModuleApiName();
-        
-        $queryString = http_build_query($params);
+
+        $queryParams = array_merge([
+            'fields' => static::getModuleFieldNames(),
+        ], $params);
+
+        $queryString = http_build_query($queryParams);
         $response = static::makeRequest('get', "/{$module}/deleted?{$queryString}");
 
         $records = $response['data'] ?? [];
-        
+
         return collect($records);
     }
 
@@ -287,7 +409,7 @@ abstract class ZohoModel
     public static function convert(string $id, array $data = []): array
     {
         $module = static::getModuleApiName();
-        
+
         $payload = [
             'data' => [$data],
         ];
@@ -303,8 +425,8 @@ abstract class ZohoModel
     public static function count(array $criteria = []): int
     {
         $module = static::getModuleApiName();
-        
-        $queryString = !empty($criteria) ? '?' . http_build_query($criteria) : '';
+
+        $queryString = ! empty($criteria) ? '?'.http_build_query($criteria) : '';
         $response = static::makeRequest('get', "/{$module}/actions/count{$queryString}");
 
         return $response['count'] ?? 0;
@@ -316,7 +438,7 @@ abstract class ZohoModel
     public static function clone(string $id): array
     {
         $record = static::find($id);
-        
+
         // Remove system fields
         $systemFields = ['id', 'Created_Time', 'Modified_Time', 'Created_By', 'Modified_By', 'Owner'];
         foreach ($systemFields as $field) {
@@ -326,4 +448,3 @@ abstract class ZohoModel
         return static::create($record);
     }
 }
-

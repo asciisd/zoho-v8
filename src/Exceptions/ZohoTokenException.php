@@ -26,7 +26,7 @@ class ZohoTokenException extends ZohoException
     public static function storageFailed(string $reason = ''): self
     {
         $message = 'Failed to store token';
-        
+
         if ($reason) {
             $message .= ": {$reason}";
         }
@@ -40,7 +40,7 @@ class ZohoTokenException extends ZohoException
     public static function retrievalFailed(string $reason = ''): self
     {
         $message = 'Failed to retrieve token';
-        
+
         if ($reason) {
             $message .= ": {$reason}";
         }
@@ -56,4 +56,3 @@ class ZohoTokenException extends ZohoException
         return new self('Refresh token has expired. Please re-authenticate.', 401);
     }
 }
-

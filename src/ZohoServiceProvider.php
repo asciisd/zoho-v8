@@ -22,15 +22,15 @@ class ZohoServiceProvider extends ServiceProvider
         );
 
         $this->app->singleton('zoho', function ($app) {
-            return new ZohoClient();
+            return new ZohoClient;
         });
 
         $this->app->singleton('zoho.oauth', function ($app) {
-            return new Auth\OAuthManager();
+            return new Auth\OAuthManager;
         });
 
         $this->app->singleton('zoho.storage', function ($app) {
-            return new Storage\TokenStorage();
+            return new Storage\TokenStorage;
         });
     }
 
@@ -72,4 +72,3 @@ class ZohoServiceProvider extends ServiceProvider
         return ['zoho', 'zoho.oauth', 'zoho.storage'];
     }
 }
-

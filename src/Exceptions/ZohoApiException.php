@@ -50,7 +50,7 @@ class ZohoApiException extends ZohoException
     public static function insufficientPermissions(string $action = ''): self
     {
         $message = 'Insufficient permissions';
-        
+
         if ($action) {
             $message .= " to {$action}";
         }
@@ -58,4 +58,3 @@ class ZohoApiException extends ZohoException
         return new self($message, 403);
     }
 }
-

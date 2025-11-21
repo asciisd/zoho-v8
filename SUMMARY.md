@@ -1,274 +1,211 @@
-# Zoho V8 Laravel Package - Implementation Summary
+# Zoho CRM Laravel Package - Implementation Summary
 
-## 🎉 Package Successfully Created!
+## Recent Changes - Version 1.0.1
 
-This document provides a quick overview of the `asciisd/zoho-v8` Laravel package implementation.
+### Fixed: Invalid fields=All Parameter Issue
 
-## 📦 Package Structure
+The package was using `fields=All` in GET requests to Zoho CRM API, which is not supported in API v8. This has been fixed by implementing automatic field detection.
 
-```
-zoho-v8/
-├── src/
-│   ├── Auth/
-│   │   └── OAuthManager.php           # OAuth authentication manager
-│   ├── Console/
-│   │   ├── ZohoAuthCommand.php        # Auth management command
-│   │   ├── ZohoRefreshTokenCommand.php # Token refresh command
-│   │   ├── ZohoSetupCommand.php       # Interactive setup wizard
-│   │   ├── ZohoSyncCommand.php        # Data sync command
-│   │   └── ZohoTestCommand.php        # CRUD testing command
-│   ├── Events/
-│   │   ├── ZohoRecordCreated.php      # Record created event
-│   │   ├── ZohoRecordDeleted.php      # Record deleted event
-│   │   ├── ZohoRecordUpdated.php      # Record updated event
-│   │   └── ZohoWebhookReceived.php    # Base webhook event
-│   ├── Exceptions/
-│   │   ├── ZohoApiException.php       # API errors
-│   │   ├── ZohoAuthException.php      # Auth errors
-│   │   ├── ZohoException.php          # Base exception
-│   │   └── ZohoTokenException.php     # Token errors
-│   ├── Facades/
-│   │   └── Zoho.php                   # Zoho facade
-│   ├── Http/Controllers/
-│   │   └── ZohoWebhookController.php  # Webhook handler
-│   ├── Models/
-│   │   ├── ZohoAccount.php            # Accounts module
-│   │   ├── ZohoCall.php               # Calls module
-│   │   ├── ZohoContact.php            # Contacts module
-│   │   ├── ZohoDeal.php               # Deals module
-│   │   ├── ZohoEvent.php              # Events module
-│   │   ├── ZohoInvoice.php            # Invoices module
-│   │   ├── ZohoLead.php               # Leads module
-│   │   ├── ZohoModel.php              # Base model (abstract)
-│   │   ├── ZohoNote.php               # Notes module
-│   │   ├── ZohoOAuthToken.php         # Token Eloquent model
-│   │   ├── ZohoProduct.php            # Products module
-│   │   └── ZohoTask.php               # Tasks module
-│   ├── Storage/
-│   │   └── TokenStorage.php           # Hybrid token storage
-│   ├── ZohoClient.php                 # Main client class
-│   └── ZohoServiceProvider.php        # Service provider
-├── config/
-│   └── zoho.php                       # Configuration file
-├── database/migrations/
-│   └── 2024_01_01_000000_create_zoho_oauth_tokens_table.php
-├── routes/
-│   └── zoho.php                       # Webhook routes
-├── composer.json                      # Package definition
-├── README.md                          # Comprehensive documentation
-├── CHANGELOG.md                       # Version history
-├── LICENSE.md                         # MIT License
-└── phpunit.xml                        # PHPUnit configuration
-```
+## Key Changes
 
-## ✨ Key Features Implemented
+### 1. Automatic Field Detection
 
-### 1. Model-Like Interface
-- 10 module classes (Contact, Account, Lead, Deal, Task, Event, Call, Note, Product, Invoice)
-- Intuitive static methods: `create()`, `find()`, `update()`, `delete()`, `all()`, `search()`
-- Laravel Collections for results
-- Support for related records, batch operations, and more
+Location: `src/Models/ZohoModel.php`
 
-### 2. OAuth Authentication
-- Full OAuth2.0 flow implementation
-- Support for all data centers (US, EU, IN, CN, JP, AU, CA)
-- Automatic token refresh
-- Token expiry handling
+Added three new methods:
 
-### 3. Token Storage
-- Hybrid storage (cache + database)
-- Cache-first with database fallback
-- Configurable storage method
-- Migration included for database storage
+**getModuleFieldNames** - Fetches all available field names for a module from the /settings/fields endpoint and caches them in memory. Returns a comma-separated string of field names.
 
-### 4. CRUD Operations
-All models support:
-- `create($data)` - Create record
-- `find($id)` - Get single record
-- `all($criteria)` - Get records with filters
-- `update($id, $data)` - Update record
-- `delete($id)` - Delete record
-- `search($criteria)` - Search records
-- `searchByEmail($email)` - Search by email
-- `searchByPhone($phone)` - Search by phone
-- `upsert($data, $duplicateCheckFields)` - Create or update
-- `getRelatedRecords($id, $relatedModule)` - Get related records
-- `updateMultiple($records)` - Batch update
-- `deleteMultiple($ids)` - Batch delete
-- `getDeletedRecords($params)` - Get deleted records
-- `convert($id, $data)` - Convert record (Leads)
-- `count($criteria)` - Get record count
-- `clone($id)` - Clone record
+**getDefaultFields** - Provides fallback fields (id, Created_Time, Modified_Time, Created_By, Modified_By, Owner) if field metadata fetch fails.
 
-### 5. Artisan Commands
+**clearFieldCache** - Clears cached field names for specific module.
 
-#### `php artisan zoho:setup`
-Interactive OAuth setup wizard with step-by-step authentication
+**clearAllFieldCache** - Clears all cached field names across all modules.
 
-#### `php artisan zoho:auth {action}`
-- `status` - Show authentication status
-- `url` - Display authorization URL
-- `refresh` - Refresh access token
-- `revoke` - Revoke access token
+**getFieldMetadata** - Returns complete field metadata including field types, properties, and configurations.
 
-#### `php artisan zoho:test {module}`
-Test CRUD operations on any module with options for specific operations
+### 2. Field Name Caching
 
-#### `php artisan zoho:sync {module}`
-Sync data between Zoho CRM and local database with progress bars
+Added static property: `protected static array $fieldNamesCache = [];`
 
-#### `php artisan zoho:token:refresh`
-Manually refresh access token and clear cache
+This caches field names for each module during the application runtime to reduce API calls.
 
-### 6. Webhook Support
-- Webhook controller with signature verification
-- Route registration (`POST /zoho/webhook`)
-- Laravel event dispatching:
-  - `ZohoWebhookReceived` - All webhooks
-  - `ZohoRecordCreated` - Record creation
-  - `ZohoRecordUpdated` - Record update
-  - `ZohoRecordDeleted` - Record deletion
+### 3. Updated All GET Requests
 
-### 7. Exception Handling
-- `ZohoException` - Base exception
-- `ZohoAuthException` - Authentication errors
-- `ZohoApiException` - API errors
-- `ZohoTokenException` - Token errors
-- All with helper static methods for common errors
+The following methods now use `static::getModuleFieldNames()` instead of `config('zoho.default_fields', 'All')`:
 
-### 8. Configuration
-Comprehensive configuration file with:
-- OAuth credentials
-- Environment selection (production/sandbox/developer)
-- Data center selection
-- Token storage method
-- Cache settings
-- Webhook secret
-- Pagination settings
+- find - Get single record by ID
+- all - Get all records with optional criteria  
+- search - Search records by criteria
+- getRelatedRecords - Get records related to another record
+- getDeletedRecords - Get deleted records
 
-## 🚀 Usage Examples
+### 4. Configuration Update
 
-### Basic CRUD
+Location: `config/zoho.php`
+
+Updated the `default_fields` configuration to indicate it is now deprecated. The configuration is kept for backward compatibility but is no longer used. Field names are now dynamically retrieved from the API.
+
+Users can still override fields on a per-request basis by passing the fields parameter:
+
 ```php
-// Create
-$contact = ZohoContact::create([
-    'First_Name' => 'John',
-    'Last_Name' => 'Doe',
-    'Email' => 'john@example.com',
+ZohoContact::find($id, ['fields' => 'id,First_Name,Email'])
+```
+
+### 5. Documentation Updates
+
+Location: `README.md`
+
+Added new "Field Management" section documenting:
+
+- How automatic field detection works
+- How to get field metadata
+- How to specify custom fields for individual requests
+- How to clear field cache when needed
+
+Updated Features section to highlight automatic field detection.
+
+Location: `CHANGELOG.md`
+
+Documented all changes in version 1.0.1 including:
+
+- Fixed invalid fields=All parameter
+- Added automatic field detection and caching
+- New field management methods
+- Deprecated default_fields configuration
+
+## How It Works
+
+### First Request Flow
+
+1. User calls `ZohoContact::all()`
+2. Method calls `getModuleFieldNames()`
+3. Check if field names are cached for "Contacts" module
+4. If not cached, fetch from `/settings/fields?module=Contacts`
+5. Extract `api_name` from each field in the response
+6. Join field names with commas: "id,First_Name,Last_Name,Email,..."
+7. Cache the result in `$fieldNamesCache['Contacts']`
+8. Return the field names string
+9. Use in API request: `/Contacts?fields=id,First_Name,Last_Name,...`
+
+### Subsequent Requests
+
+1. User calls `ZohoContact::find($id)`
+2. Method calls `getModuleFieldNames()`
+3. Field names are already cached for "Contacts"
+4. Return cached field names immediately (no API call)
+5. Use in API request
+
+### Fallback Behavior
+
+If field metadata fetch fails due to network error, permission issues, or other exceptions:
+
+1. Exception is caught and logged as warning
+2. `getDefaultFields()` is called
+3. Returns basic system fields: "id,Created_Time,Modified_Time,Created_By,Modified_By,Owner"
+4. API request proceeds with fallback fields
+
+## Benefits
+
+1. **API Compliance** - Now uses actual field names as required by Zoho CRM API v8
+2. **Automatic Custom Fields** - Custom fields are automatically included without manual configuration
+3. **Performance** - Field names are cached to minimize API calls
+4. **Graceful Degradation** - Falls back to common fields if metadata fetch fails
+5. **Developer Friendly** - Developers can still override fields per-request
+6. **Future Proof** - When new fields are added to CRM, they are automatically detected
+7. **Easy Refresh** - Simple methods to clear cache when CRM fields change
+
+## Field Metadata Structure
+
+The `/settings/fields` endpoint returns data in this format:
+
+```json
+{
+  "fields": [
+    {
+      "api_name": "First_Name",
+      "field_label": "First Name", 
+      "data_type": "text",
+      "read_only": false,
+      "required": true,
+      ...other metadata...
+    },
+    {
+      "api_name": "Email",
+      "field_label": "Email",
+      "data_type": "email",
+      ...
+    }
+  ]
+}
+```
+
+The package extracts only the `api_name` values and joins them for use in GET requests.
+
+## Usage Examples
+
+### Basic Usage (Automatic Fields)
+
+```php
+// Automatically fetches all fields
+$contacts = ZohoContact::all();
+$contact = ZohoContact::find('123');
+```
+
+### Custom Fields Per Request
+
+```php
+// Override with specific fields
+$contact = ZohoContact::find('123', [
+    'fields' => 'id,First_Name,Last_Name,Email'
 ]);
 
-// Read
-$contact = ZohoContact::find('123456');
-$contacts = ZohoContact::all(['per_page' => 200]);
-
-// Update
-ZohoContact::update('123456', ['Phone' => '555-0123']);
-
-// Delete
-ZohoContact::delete('123456');
-
-// Search
-$contacts = ZohoContact::searchByEmail('john@example.com');
+$contacts = ZohoContact::all([
+    'fields' => 'Full_Name,Email,Phone',
+    'per_page' => 50
+]);
 ```
 
-### Using Facade
+### Field Metadata
+
 ```php
-use Asciisd\ZohoV8\Facades\Zoho;
+// Get complete field information
+$fields = ZohoContact::getFieldMetadata();
 
-$contact = Zoho::contacts()->create([...]);
-$lead = Zoho::leads()->find('123456');
-$deals = Zoho::deals()->all();
+foreach ($fields as $field) {
+    echo $field['api_name'] . ' - ' . $field['field_label'];
+}
 ```
 
-### Webhook Handling
+### Clear Cache
+
 ```php
-Event::listen(ZohoRecordCreated::class, function ($event) {
-    $module = $event->module;
-    $record = $event->getData();
-    // Handle record creation
-});
+// Clear cache for Contacts module
+ZohoContact::clearFieldCache();
+
+// Clear cache for all modules
+ZohoContact::clearAllFieldCache();
 ```
 
-## 📋 Installation Steps
+## Testing Recommendations
 
-1. **Install Package**
-   ```bash
-   composer require asciisd/zoho-v8
-   ```
+After implementing these changes, test the following scenarios:
 
-2. **Publish Assets**
-   ```bash
-   php artisan vendor:publish --tag=zoho-config
-   php artisan vendor:publish --tag=zoho-migrations
-   ```
+1. First request to each module fetches fields correctly
+2. Subsequent requests use cached field names
+3. Custom fields from CRM are included in responses
+4. Manual field override works correctly
+5. Field cache clearing works as expected
+6. Fallback fields are used if metadata fetch fails
+7. All existing functionality still works correctly
 
-3. **Run Migrations**
-   ```bash
-   php artisan migrate
-   ```
+## Migration Notes
 
-4. **Configure Environment**
-   Add to `.env`:
-   ```env
-   ZOHO_CLIENT_ID=your_client_id
-   ZOHO_CLIENT_SECRET=your_client_secret
-   ZOHO_REDIRECT_URI=your_redirect_uri
-   ZOHO_DATA_CENTER=US
-   ```
+This is a **non-breaking change**. Existing code will continue to work without modifications:
 
-5. **Authenticate**
-   ```bash
-   php artisan zoho:setup
-   ```
+- Old configuration is ignored but not removed
+- All existing methods maintain same signatures
+- Field caching happens transparently
+- Developers can optionally use new field management methods
 
-## 🎯 Design Principles
-
-1. **Minimal Code** - Super simple and clean implementation
-2. **Laravel Way** - Follows Laravel conventions and patterns
-3. **Eloquent-Like** - Model-based interface familiar to Laravel developers
-4. **Auto-Discovery** - No manual service provider registration needed
-5. **Comprehensive** - Covers all major Zoho CRM operations
-6. **Flexible** - Supports multiple data centers and environments
-7. **Production-Ready** - Error handling, logging, and token management
-
-## 🔒 Security Features
-
-- OAuth2.0 authentication
-- Webhook signature verification
-- Secure token storage (encrypted in database)
-- Token auto-refresh
-- Environment-specific configurations
-
-## 📚 Documentation
-
-The package includes:
-- Comprehensive README with examples
-- Inline code documentation
-- CHANGELOG for version tracking
-- MIT License
-
-## 🧪 Testing Support
-
-- PHPUnit configuration included
-- Test command for manual testing
-- Support for Orchestra Testbench
-
-## 🎉 Conclusion
-
-The `asciisd/zoho-v8` package is now complete and ready to use! It provides a minimal, elegant, and powerful interface for integrating Zoho CRM with Laravel applications.
-
-**All 10 planned features have been successfully implemented:**
-
-✅ Package structure  
-✅ Configuration and migrations  
-✅ OAuth manager  
-✅ Token storage  
-✅ Base model with CRUD  
-✅ All module models  
-✅ Artisan commands  
-✅ Webhook handler  
-✅ Exception handling  
-✅ Comprehensive documentation  
-
-The package is production-ready and follows Laravel best practices!
-
+The only visible change is that GET requests now return all available fields from the CRM instead of potentially failing with an invalid "All" parameter.

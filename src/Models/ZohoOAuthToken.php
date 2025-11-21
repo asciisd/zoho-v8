@@ -37,7 +37,7 @@ class ZohoOAuthToken extends Model
      */
     public function isExpired(): bool
     {
-        if (!$this->expires_at) {
+        if (! $this->expires_at) {
             return true;
         }
 
@@ -49,7 +49,6 @@ class ZohoOAuthToken extends Model
      */
     public function isValid(): bool
     {
-        return !$this->isExpired() && !empty($this->access_token);
+        return ! $this->isExpired() && ! empty($this->access_token);
     }
 }
-

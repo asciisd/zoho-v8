@@ -40,15 +40,16 @@ class ZohoAuthCommand extends Command
      */
     protected function showStatus(): int
     {
-        $oauth = new OAuthManager();
-        $storage = new TokenStorage();
+        $oauth = new OAuthManager;
+        $storage = new TokenStorage;
 
         $this->info('🔐 Zoho CRM Authentication Status');
         $this->newLine();
 
-        if (!$oauth->isAuthenticated()) {
+        if (! $oauth->isAuthenticated()) {
             $this->warn('❌ Not authenticated');
             $this->line('Run "php artisan zoho:setup" to authenticate.');
+
             return self::FAILURE;
         }
 
@@ -56,13 +57,13 @@ class ZohoAuthCommand extends Command
         $this->newLine();
 
         $tokens = $storage->getTokens();
-        
+
         if ($tokens) {
             $this->table(
                 ['Property', 'Value'],
                 [
-                    ['Access Token', substr($tokens['access_token'] ?? '', 0, 30) . '...'],
-                    ['Refresh Token', isset($tokens['refresh_token']) ? substr($tokens['refresh_token'], 0, 30) . '...' : 'N/A'],
+                    ['Access Token', substr($tokens['access_token'] ?? '', 0, 30).'...'],
+                    ['Refresh Token', isset($tokens['refresh_token']) ? substr($tokens['refresh_token'], 0, 30).'...' : 'N/A'],
                     ['Token Type', $tokens['token_type'] ?? 'Bearer'],
                     ['Data Center', $tokens['data_center'] ?? config('zoho.data_center')],
                     ['Environment', $tokens['environment'] ?? config('zoho.environment')],
@@ -79,8 +80,8 @@ class ZohoAuthCommand extends Command
      */
     protected function showAuthUrl(): int
     {
-        $oauth = new OAuthManager();
-        
+        $oauth = new OAuthManager;
+
         $scope = $this->ask(
             'Enter OAuth scope (press Enter for default)',
             'ZohoCRM.modules.ALL,ZohoCRM.settings.ALL,ZohoCRM.users.ALL'
@@ -102,26 +103,27 @@ class ZohoAuthCommand extends Command
     protected function refreshToken(): int
     {
         $this->info('🔄 Refreshing access token...');
-        
+
         try {
-            $oauth = new OAuthManager();
+            $oauth = new OAuthManager;
             $tokens = $oauth->refreshAccessToken();
-            
+
             $this->newLine();
             $this->info('✓ Token refreshed successfully!');
             $this->newLine();
-            
+
             $this->table(
                 ['Property', 'Value'],
                 [
-                    ['Access Token', substr($tokens['access_token'], 0, 30) . '...'],
-                    ['Expires In', ($tokens['expires_in'] ?? 3600) . ' seconds'],
+                    ['Access Token', substr($tokens['access_token'], 0, 30).'...'],
+                    ['Expires In', ($tokens['expires_in'] ?? 3600).' seconds'],
                 ]
             );
 
             return self::SUCCESS;
         } catch (\Exception $e) {
-            $this->error('❌ Token refresh failed: ' . $e->getMessage());
+            $this->error('❌ Token refresh failed: '.$e->getMessage());
+
             return self::FAILURE;
         }
     }
@@ -131,16 +133,16 @@ class ZohoAuthCommand extends Command
      */
     protected function revokeToken(): int
     {
-        if (!$this->confirm('Are you sure you want to revoke the access token?')) {
+        if (! $this->confirm('Are you sure you want to revoke the access token?')) {
             return self::SUCCESS;
         }
 
         $this->info('🗑️  Revoking access token...');
-        
+
         try {
-            $oauth = new OAuthManager();
+            $oauth = new OAuthManager;
             $success = $oauth->revokeToken();
-            
+
             if ($success) {
                 $this->newLine();
                 $this->info('✓ Token revoked successfully!');
@@ -151,9 +153,9 @@ class ZohoAuthCommand extends Command
 
             return self::SUCCESS;
         } catch (\Exception $e) {
-            $this->error('❌ Token revocation failed: ' . $e->getMessage());
+            $this->error('❌ Token revocation failed: '.$e->getMessage());
+
             return self::FAILURE;
         }
     }
 }
-

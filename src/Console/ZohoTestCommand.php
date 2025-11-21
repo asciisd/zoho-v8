@@ -34,11 +34,15 @@ class ZohoTestCommand extends Command
         $this->newLine();
 
         $modelClass = $this->getModelClass($module);
-        
-        if (!$modelClass) {
+
+        if (! $modelClass) {
             $this->error("❌ Invalid module: {$module}");
+
             return self::FAILURE;
         }
+
+        // Clear field cache to ensure fresh field metadata
+        $modelClass::clearFieldCache();
 
         try {
             if ($operation === 'all' || $operation === 'create') {
@@ -59,11 +63,12 @@ class ZohoTestCommand extends Command
 
             $this->newLine();
             $this->info('✓ All tests completed successfully!');
-            
+
             return self::SUCCESS;
         } catch (\Exception $e) {
             $this->newLine();
-            $this->error('❌ Test failed: ' . $e->getMessage());
+            $this->error('❌ Test failed: '.$e->getMessage());
+
             return self::FAILURE;
         }
     }
@@ -74,10 +79,10 @@ class ZohoTestCommand extends Command
     protected function testCreate($modelClass, string $module): void
     {
         $this->line('📝 Testing CREATE operation...');
-        
+
         $data = $this->getTestData($module);
         $record = $modelClass::create($data);
-        
+
         $this->info('✓ Record created successfully!');
         $this->table(
             ['Field', 'Value'],
@@ -95,11 +100,11 @@ class ZohoTestCommand extends Command
     protected function testRead($modelClass, string $module): void
     {
         $this->line('📖 Testing READ operation...');
-        
+
         $records = $modelClass::all(['per_page' => 5]);
-        
+
         $this->info("✓ Retrieved {$records->count()} records");
-        
+
         if ($records->isNotEmpty()) {
             $first = $records->first();
             $this->table(
@@ -111,7 +116,7 @@ class ZohoTestCommand extends Command
                 ]
             );
         }
-        
+
         $this->newLine();
     }
 
@@ -121,7 +126,7 @@ class ZohoTestCommand extends Command
     protected function testSearch($modelClass, string $module): void
     {
         $this->line('🔍 Testing SEARCH operation...');
-        
+
         $criteria = match ($module) {
             'Contacts' => '(Last_Name:starts_with:Test)',
             'Leads' => '(Last_Name:starts_with:Test)',
@@ -129,9 +134,9 @@ class ZohoTestCommand extends Command
             'Deals' => '(Deal_Name:starts_with:Test)',
             default => '(id:equals:0)',
         };
-        
+
         $records = $modelClass::search($criteria);
-        
+
         $this->info("✓ Search returned {$records->count()} records");
         $this->newLine();
     }
@@ -142,9 +147,9 @@ class ZohoTestCommand extends Command
     protected function testCount($modelClass, string $module): void
     {
         $this->line('🔢 Testing COUNT operation...');
-        
+
         $count = $modelClass::count();
-        
+
         $this->info("✓ Total records: {$count}");
         $this->newLine();
     }
@@ -169,13 +174,13 @@ class ZohoTestCommand extends Command
     protected function getTestData(string $module): array
     {
         $timestamp = time();
-        
+
         return match ($module) {
             'Contacts' => [
                 'First_Name' => 'Test',
                 'Last_Name' => "Contact {$timestamp}",
                 'Email' => "test.contact.{$timestamp}@example.com",
-                'Phone' => '1234567890',
+                'Phone' => substr($timestamp, -10), // Use last 10 digits of timestamp as phone
             ],
             'Leads' => [
                 'First_Name' => 'Test',
@@ -185,7 +190,7 @@ class ZohoTestCommand extends Command
             ],
             'Accounts' => [
                 'Account_Name' => "Test Account {$timestamp}",
-                'Phone' => '1234567890',
+                'Phone' => substr($timestamp, -10), // Use last 10 digits of timestamp as phone
                 'Website' => 'https://example.com',
             ],
             'Deals' => [
@@ -197,4 +202,3 @@ class ZohoTestCommand extends Command
         };
     }
 }
-

@@ -26,7 +26,7 @@ class ZohoAuthException extends ZohoException
     public static function tokenGenerationFailed(string $reason = ''): self
     {
         $message = 'Failed to generate access token';
-        
+
         if ($reason) {
             $message .= ": {$reason}";
         }
@@ -40,7 +40,7 @@ class ZohoAuthException extends ZohoException
     public static function tokenRefreshFailed(string $reason = ''): self
     {
         $message = 'Failed to refresh access token';
-        
+
         if ($reason) {
             $message .= ": {$reason}";
         }
@@ -56,4 +56,3 @@ class ZohoAuthException extends ZohoException
         return new self('Access token has expired.', 401);
     }
 }
-

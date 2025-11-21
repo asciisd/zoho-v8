@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\Log;
 class TokenStorage
 {
     protected string $storageMethod;
+
     protected string $cacheDriver;
+
     protected int $cacheTtl;
 
     public function __construct()
@@ -30,8 +32,8 @@ class TokenStorage
                 'user_identifier' => $userIdentifier,
                 'access_token' => $tokens['access_token'] ?? null,
                 'refresh_token' => $tokens['refresh_token'] ?? null,
-                'expires_at' => isset($tokens['expires_in']) 
-                    ? now()->addSeconds($tokens['expires_in']) 
+                'expires_at' => isset($tokens['expires_in'])
+                    ? now()->addSeconds($tokens['expires_in'])
                     : null,
                 'token_type' => $tokens['token_type'] ?? 'Bearer',
                 'grant_token' => $tokens['grant_token'] ?? null,
@@ -49,7 +51,7 @@ class TokenStorage
 
             return true;
         } catch (\Exception $e) {
-            Log::error('Failed to store Zoho tokens: ' . $e->getMessage());
+            Log::error('Failed to store Zoho tokens: '.$e->getMessage());
             throw ZohoTokenException::storageFailed($e->getMessage());
         }
     }
@@ -71,18 +73,18 @@ class TokenStorage
             // Fallback to database
             if ($this->storageMethod === 'database' || $this->storageMethod === 'both') {
                 $dbTokens = $this->getFromDatabase($userIdentifier);
-                
+
                 // Refresh cache if we got tokens from database
                 if ($dbTokens && ($this->storageMethod === 'both')) {
                     $this->storeInCache($dbTokens, $userIdentifier);
                 }
-                
+
                 return $dbTokens;
             }
 
             return null;
         } catch (\Exception $e) {
-            Log::error('Failed to retrieve Zoho tokens: ' . $e->getMessage());
+            Log::error('Failed to retrieve Zoho tokens: '.$e->getMessage());
             throw ZohoTokenException::retrievalFailed($e->getMessage());
         }
     }
@@ -93,6 +95,7 @@ class TokenStorage
     public function getAccessToken(string $userIdentifier = 'default'): ?string
     {
         $tokens = $this->getTokens($userIdentifier);
+
         return $tokens['access_token'] ?? null;
     }
 
@@ -102,6 +105,7 @@ class TokenStorage
     public function getRefreshToken(string $userIdentifier = 'default'): ?string
     {
         $tokens = $this->getTokens($userIdentifier);
+
         return $tokens['refresh_token'] ?? null;
     }
 
@@ -121,7 +125,8 @@ class TokenStorage
 
             return true;
         } catch (\Exception $e) {
-            Log::error('Failed to delete Zoho tokens: ' . $e->getMessage());
+            Log::error('Failed to delete Zoho tokens: '.$e->getMessage());
+
             return false;
         }
     }
@@ -132,7 +137,8 @@ class TokenStorage
     public function hasTokens(string $userIdentifier = 'default'): bool
     {
         $tokens = $this->getTokens($userIdentifier);
-        return !empty($tokens['access_token']);
+
+        return ! empty($tokens['access_token']);
     }
 
     /**
@@ -150,6 +156,7 @@ class TokenStorage
     protected function getFromCache(string $userIdentifier): ?array
     {
         $cacheKey = $this->getCacheKey($userIdentifier);
+
         return Cache::driver($this->cacheDriver)->get($cacheKey);
     }
 
@@ -187,7 +194,7 @@ class TokenStorage
             ->where('environment', config('zoho.environment', 'production'))
             ->first();
 
-        if (!$token) {
+        if (! $token) {
             return null;
         }
 
@@ -220,8 +227,7 @@ class TokenStorage
     {
         $dataCenter = config('zoho.data_center', 'US');
         $environment = config('zoho.environment', 'production');
-        
+
         return "zoho_tokens:{$userIdentifier}:{$dataCenter}:{$environment}";
     }
 }
-

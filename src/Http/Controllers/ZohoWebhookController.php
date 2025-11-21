@@ -2,6 +2,7 @@
 
 namespace Asciisd\ZohoV8\Http\Controllers;
 
+use Asciisd\ZohoV8\Auth\OAuthManager;
 use Asciisd\ZohoV8\Events\ZohoRecordCreated;
 use Asciisd\ZohoV8\Events\ZohoRecordDeleted;
 use Asciisd\ZohoV8\Events\ZohoRecordUpdated;
@@ -20,9 +21,9 @@ class ZohoWebhookController extends Controller
     {
         try {
             // Verify webhook signature if secret is configured
-            if (!$this->verifySignature($request)) {
+            if (! $this->verifySignature($request)) {
                 Log::warning('Zoho webhook signature verification failed');
-                
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid signature',
@@ -30,7 +31,7 @@ class ZohoWebhookController extends Controller
             }
 
             $payload = $request->all();
-            
+
             // Log webhook for debugging
             Log::info('Zoho webhook received', ['payload' => $payload]);
 
@@ -45,7 +46,7 @@ class ZohoWebhookController extends Controller
                 'message' => 'Webhook processed successfully',
             ]);
         } catch (\Exception $e) {
-            Log::error('Zoho webhook processing failed: ' . $e->getMessage(), [
+            Log::error('Zoho webhook processing failed: '.$e->getMessage(), [
                 'exception' => $e,
                 'payload' => $request->all(),
             ]);
@@ -71,7 +72,7 @@ class ZohoWebhookController extends Controller
         }
 
         $signature = $request->header('X-Zoho-Webhook-Signature');
-        
+
         if (empty($signature)) {
             return false;
         }
@@ -92,7 +93,7 @@ class ZohoWebhookController extends Controller
         $module = $payload['module'] ?? null;
         $record = $payload['data'] ?? [];
 
-        if (!$event || !$module) {
+        if (! $event || ! $module) {
             return;
         }
 
@@ -128,5 +129,52 @@ class ZohoWebhookController extends Controller
             'message' => 'Webhook endpoint is active',
         ]);
     }
-}
 
+    /**
+     * Handle OAuth callback from Zoho.
+     */
+    public function callback(Request $request): JsonResponse
+    {
+        try {
+            $code = $request->input('code');
+            $location = $request->input('location');
+
+            if (! $code) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Authorization code not provided',
+                ], 400);
+            }
+
+            // Generate access token from grant token
+            $oauth = app(OAuthManager::class);
+            $tokens = $oauth->generateAccessToken($code);
+
+            Log::info('Zoho OAuth successful', [
+                'location' => $location,
+                'has_refresh_token' => isset($tokens['refresh_token']),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Authorization successful! Tokens have been saved.',
+                'data' => [
+                    'access_token' => substr($tokens['access_token'], 0, 20).'...',
+                    'refresh_token' => isset($tokens['refresh_token']) ? substr($tokens['refresh_token'], 0, 20).'...' : null,
+                    'expires_in' => $tokens['expires_in'] ?? null,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Zoho OAuth callback failed: '.$e->getMessage(), [
+                'exception' => $e,
+                'request' => $request->all(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Authorization failed',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+}

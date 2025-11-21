@@ -32,31 +32,31 @@ class ZohoRefreshTokenCommand extends Command
         $this->newLine();
 
         try {
-            $oauth = new OAuthManager();
+            $oauth = new OAuthManager;
             $tokens = $oauth->refreshAccessToken();
-            
+
             $this->info('✓ Token refreshed successfully!');
             $this->newLine();
-            
+
             $this->table(
                 ['Property', 'Value'],
                 [
-                    ['Access Token', substr($tokens['access_token'], 0, 30) . '...'],
+                    ['Access Token', substr($tokens['access_token'], 0, 30).'...'],
                     ['Token Type', $tokens['token_type'] ?? 'Bearer'],
-                    ['Expires In', ($tokens['expires_in'] ?? 3600) . ' seconds'],
+                    ['Expires In', ($tokens['expires_in'] ?? 3600).' seconds'],
                 ]
             );
 
             $this->newLine();
             $this->info('💡 Token has been stored and cached');
-            
+
             return self::SUCCESS;
         } catch (\Exception $e) {
-            $this->error('❌ Token refresh failed: ' . $e->getMessage());
+            $this->error('❌ Token refresh failed: '.$e->getMessage());
             $this->newLine();
             $this->line('Make sure you have a valid refresh token configured.');
             $this->line('Run "php artisan zoho:setup" if you need to authenticate again.');
-            
+
             return self::FAILURE;
         }
     }
@@ -67,12 +67,11 @@ class ZohoRefreshTokenCommand extends Command
     protected function clearCache(): void
     {
         $this->line('🗑️  Clearing cached tokens...');
-        
-        $storage = new TokenStorage();
+
+        $storage = new TokenStorage;
         $storage->deleteTokens();
-        
+
         $this->info('✓ Cache cleared');
         $this->newLine();
     }
 }
-

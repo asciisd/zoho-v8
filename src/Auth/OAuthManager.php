@@ -10,10 +10,15 @@ use Illuminate\Support\Facades\Log;
 class OAuthManager
 {
     protected TokenStorage $storage;
+
     protected string $clientId;
+
     protected string $clientSecret;
+
     protected string $redirectUri;
+
     protected string $dataCenter;
+
     protected array $dataCenterUrls = [
         'US' => 'https://accounts.zoho.com',
         'EU' => 'https://accounts.zoho.eu',
@@ -59,7 +64,7 @@ class OAuthManager
     public function getAuthorizationUrl(string $scope = 'ZohoCRM.modules.ALL,ZohoCRM.settings.ALL'): string
     {
         $baseUrl = $this->getAccountsUrl();
-        
+
         $params = http_build_query([
             'scope' => $scope,
             'client_id' => $this->clientId,
@@ -78,7 +83,7 @@ class OAuthManager
     {
         try {
             $baseUrl = $this->getAccountsUrl();
-            
+
             $response = Http::asForm()->post("{$baseUrl}/oauth/v2/token", [
                 'grant_type' => 'authorization_code',
                 'client_id' => $this->clientId,
@@ -87,7 +92,7 @@ class OAuthManager
                 'code' => $grantToken,
             ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 $error = $response->json('error', 'Unknown error');
                 throw ZohoAuthException::tokenGenerationFailed($error);
             }
@@ -105,7 +110,7 @@ class OAuthManager
 
             return $tokens;
         } catch (\Exception $e) {
-            Log::error('Zoho token generation failed: ' . $e->getMessage());
+            Log::error('Zoho token generation failed: '.$e->getMessage());
             throw ZohoAuthException::tokenGenerationFailed($e->getMessage());
         }
     }
@@ -116,20 +121,20 @@ class OAuthManager
     public function refreshAccessToken(?string $refreshToken = null): array
     {
         try {
-            if (!$refreshToken) {
+            if (! $refreshToken) {
                 $refreshToken = $this->storage->getRefreshToken();
             }
 
-            if (!$refreshToken) {
+            if (! $refreshToken) {
                 $refreshToken = config('zoho.refresh_token');
             }
 
-            if (!$refreshToken) {
+            if (! $refreshToken) {
                 throw ZohoAuthException::tokenRefreshFailed('No refresh token available');
             }
 
             $baseUrl = $this->getAccountsUrl();
-            
+
             $response = Http::asForm()->post("{$baseUrl}/oauth/v2/token", [
                 'grant_type' => 'refresh_token',
                 'client_id' => $this->clientId,
@@ -137,7 +142,7 @@ class OAuthManager
                 'refresh_token' => $refreshToken,
             ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 $error = $response->json('error', 'Unknown error');
                 throw ZohoAuthException::tokenRefreshFailed($error);
             }
@@ -154,7 +159,7 @@ class OAuthManager
 
             return $tokens;
         } catch (\Exception $e) {
-            Log::error('Zoho token refresh failed: ' . $e->getMessage());
+            Log::error('Zoho token refresh failed: '.$e->getMessage());
             throw ZohoAuthException::tokenRefreshFailed($e->getMessage());
         }
     }
@@ -166,7 +171,7 @@ class OAuthManager
     {
         $tokens = $this->storage->getTokens($userIdentifier);
 
-        if (!$tokens || empty($tokens['access_token'])) {
+        if (! $tokens || empty($tokens['access_token'])) {
             // Try to refresh from config
             $this->refreshAccessToken();
             $tokens = $this->storage->getTokens($userIdentifier);
@@ -174,10 +179,10 @@ class OAuthManager
 
         // Check if token is expired
         if (isset($tokens['expires_at'])) {
-            $expiresAt = is_string($tokens['expires_at']) 
-                ? \Carbon\Carbon::parse($tokens['expires_at']) 
+            $expiresAt = is_string($tokens['expires_at'])
+                ? \Carbon\Carbon::parse($tokens['expires_at'])
                 : $tokens['expires_at'];
-            
+
             if ($expiresAt->isPast()) {
                 // Token expired, refresh it
                 $this->refreshAccessToken($tokens['refresh_token'] ?? null);
@@ -194,16 +199,16 @@ class OAuthManager
     public function revokeToken(?string $token = null): bool
     {
         try {
-            if (!$token) {
+            if (! $token) {
                 $token = $this->storage->getAccessToken();
             }
 
-            if (!$token) {
+            if (! $token) {
                 return false;
             }
 
             $baseUrl = $this->getAccountsUrl();
-            
+
             $response = Http::asForm()->post("{$baseUrl}/oauth/v2/token/revoke", [
                 'token' => $token,
             ]);
@@ -213,7 +218,8 @@ class OAuthManager
 
             return $response->successful();
         } catch (\Exception $e) {
-            Log::error('Zoho token revocation failed: ' . $e->getMessage());
+            Log::error('Zoho token revocation failed: '.$e->getMessage());
+
             return false;
         }
     }
@@ -252,4 +258,3 @@ class OAuthManager
         return $urls[$this->dataCenter] ?? $urls['US'];
     }
 }
-

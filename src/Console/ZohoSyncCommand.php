@@ -38,9 +38,10 @@ class ZohoSyncCommand extends Command
         $this->newLine();
 
         $modelClass = $this->getModelClass($module);
-        
-        if (!$modelClass) {
+
+        if (! $modelClass) {
             $this->error("❌ Invalid module: {$module}");
+
             return self::FAILURE;
         }
 
@@ -51,11 +52,13 @@ class ZohoSyncCommand extends Command
                 return $this->pushToZoho($modelClass, $module, $limit);
             } else {
                 $this->error("❌ Invalid direction: {$direction}");
+
                 return self::FAILURE;
             }
         } catch (\Exception $e) {
             $this->newLine();
-            $this->error('❌ Sync failed: ' . $e->getMessage());
+            $this->error('❌ Sync failed: '.$e->getMessage());
+
             return self::FAILURE;
         }
     }
@@ -75,6 +78,7 @@ class ZohoSyncCommand extends Command
 
         if ($records->isEmpty()) {
             $this->warn('⚠️  No records found');
+
             return self::SUCCESS;
         }
 
@@ -87,9 +91,9 @@ class ZohoSyncCommand extends Command
         foreach ($records as $record) {
             // Here you would typically save to your local database
             // For now, we'll just process the records
-            
+
             // Example: YourLocalModel::updateOrCreate(['zoho_id' => $record['id']], $record);
-            
+
             $bar->advance();
         }
 
@@ -97,14 +101,14 @@ class ZohoSyncCommand extends Command
         $this->newLine(2);
 
         $this->info("✓ Successfully synced {$records->count()} records");
-        
+
         // Show sample record
         $this->newLine();
         $this->line('Sample record:');
         $first = $records->first();
         $this->table(
             ['Field', 'Value'],
-            collect($first)->take(5)->map(fn($value, $key) => [$key, is_array($value) ? json_encode($value) : $value])->values()->toArray()
+            collect($first)->take(5)->map(fn ($value, $key) => [$key, is_array($value) ? json_encode($value) : $value])->values()->toArray()
         );
 
         return self::SUCCESS;
@@ -120,8 +124,8 @@ class ZohoSyncCommand extends Command
 
         $this->warn('⚠️  Push functionality requires local database models');
         $this->line('Implement this by querying your local models and using:');
-        $this->line("\$modelClass::create(\$data) or \$modelClass::upsert(\$data)");
-        
+        $this->line('$modelClass::create($data) or $modelClass::upsert($data)');
+
         return self::SUCCESS;
     }
 
@@ -139,4 +143,3 @@ class ZohoSyncCommand extends Command
         };
     }
 }
-

@@ -10,7 +10,9 @@ class ZohoWebhookReceived
     use Dispatchable, SerializesModels;
 
     public array $payload;
+
     public string $module;
+
     public string $event;
 
     /**
@@ -45,7 +47,7 @@ class ZohoWebhookReceived
     public function getRecordId(): ?string
     {
         $record = $this->getRecord();
+
         return $record['id'] ?? null;
     }
 }
-

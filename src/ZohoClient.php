@@ -20,7 +20,7 @@ class ZohoClient
      */
     public function contacts(): ZohoContact
     {
-        return new ZohoContact();
+        return new ZohoContact;
     }
 
     /**
@@ -28,7 +28,7 @@ class ZohoClient
      */
     public function accounts(): ZohoAccount
     {
-        return new ZohoAccount();
+        return new ZohoAccount;
     }
 
     /**
@@ -36,7 +36,7 @@ class ZohoClient
      */
     public function leads(): ZohoLead
     {
-        return new ZohoLead();
+        return new ZohoLead;
     }
 
     /**
@@ -44,7 +44,7 @@ class ZohoClient
      */
     public function deals(): ZohoDeal
     {
-        return new ZohoDeal();
+        return new ZohoDeal;
     }
 
     /**
@@ -52,7 +52,7 @@ class ZohoClient
      */
     public function tasks(): ZohoTask
     {
-        return new ZohoTask();
+        return new ZohoTask;
     }
 
     /**
@@ -60,7 +60,7 @@ class ZohoClient
      */
     public function events(): ZohoEvent
     {
-        return new ZohoEvent();
+        return new ZohoEvent;
     }
 
     /**
@@ -68,7 +68,7 @@ class ZohoClient
      */
     public function calls(): ZohoCall
     {
-        return new ZohoCall();
+        return new ZohoCall;
     }
 
     /**
@@ -76,7 +76,7 @@ class ZohoClient
      */
     public function notes(): ZohoNote
     {
-        return new ZohoNote();
+        return new ZohoNote;
     }
 
     /**
@@ -84,7 +84,7 @@ class ZohoClient
      */
     public function products(): ZohoProduct
     {
-        return new ZohoProduct();
+        return new ZohoProduct;
     }
 
     /**
@@ -92,7 +92,6 @@ class ZohoClient
      */
     public function invoices(): ZohoInvoice
     {
-        return new ZohoInvoice();
+        return new ZohoInvoice;
     }
 }
-

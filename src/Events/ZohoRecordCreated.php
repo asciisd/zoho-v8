@@ -10,6 +10,7 @@ class ZohoRecordCreated
     use Dispatchable, SerializesModels;
 
     public array $record;
+
     public string $module;
 
     /**
@@ -37,4 +38,3 @@ class ZohoRecordCreated
         return $this->record['id'] ?? null;
     }
 }
-

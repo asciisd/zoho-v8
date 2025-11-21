@@ -9,6 +9,7 @@ A minimal and elegant Laravel wrapper for Zoho CRM PHP SDK 8.0. This package pro
 
 ✅ **Model-like Interface** - Use intuitive model classes like `ZohoContact::create()`, `ZohoLead::find()`, etc.  
 ✅ **Automatic Token Management** - Hybrid cache + database token storage with auto-refresh  
+✅ **Automatic Field Detection** - Dynamically fetches and caches all available fields from your CRM  
 ✅ **Full CRUD Operations** - Create, Read, Update, Delete, Search, Upsert, and more  
 ✅ **Webhook Support** - Handle Zoho CRM webhooks with Laravel events  
 ✅ **Comprehensive Artisan Commands** - Easy setup, testing, and data synchronization  
@@ -317,6 +318,57 @@ $count = ZohoContact::count();
 $clonedContact = ZohoContact::clone('4150868000000624001');
 ```
 
+### Field Management
+
+The package automatically fetches all available field names for each module from the Zoho CRM API and caches them for improved performance. This ensures you always get all fields without needing to manually specify them.
+
+#### Get Field Metadata
+
+Fetch complete field metadata including field types, properties, and configurations:
+
+```php
+$fields = ZohoContact::getFieldMetadata();
+
+// Each field contains information like:
+// - api_name
+// - field_label
+// - data_type
+// - read_only
+// - required
+// - and more...
+```
+
+#### Specify Custom Fields
+
+You can override the automatic field fetching by specifying custom fields for individual requests:
+
+```php
+// Fetch only specific fields
+$contact = ZohoContact::find('123', [
+    'fields' => 'id,First_Name,Last_Name,Email'
+]);
+
+// Search with specific fields
+$contacts = ZohoContact::all([
+    'fields' => 'Full_Name,Email,Phone',
+    'per_page' => 50,
+]);
+```
+
+#### Clear Field Cache
+
+If you've added new custom fields to your Zoho CRM or need to refresh the cached field names:
+
+```php
+// Clear cache for specific module
+ZohoContact::clearFieldCache();
+
+// Clear cache for all modules
+ZohoContact::clearAllFieldCache();
+```
+
+**Note:** Field names are automatically cached after the first request to each module. The cache persists for the duration of the application runtime. If you modify fields in your Zoho CRM (add/remove custom fields), you should clear the cache to fetch the updated field list.
+
 ## Artisan Commands
 
 ### Setup Authentication
@@ -425,6 +477,270 @@ Add a webhook secret to your `.env` file for signature verification:
 
 ```env
 ZOHO_WEBHOOK_SECRET=your_secret_key
+```
+
+## Model Synchronization
+
+The package provides a powerful trait-based system to automatically sync any Laravel model with any Zoho CRM module. When you create, update, or delete a model in your Laravel application, it will automatically sync with Zoho CRM in the background using Laravel queues.
+
+### Features
+
+✅ **Automatic Syncing** - Sync on create, update, and delete events  
+✅ **Queued Processing** - Non-blocking background sync with Laravel queues  
+✅ **Automatic Retries** - 3 automatic retries with exponential backoff  
+✅ **Field Mapping** - Flexible field mapping between Laravel models and Zoho fields  
+✅ **Polymorphic Storage** - Store Zoho record IDs using polymorphic relationships  
+✅ **Conditional Sync** - Add custom logic to control when syncing occurs  
+✅ **Manual Control** - Temporarily disable syncing or trigger manual syncs  
+
+### Installation
+
+Publish and run the sync migration:
+
+```bash
+php artisan vendor:publish --tag=zoho-migrations
+php artisan migrate
+```
+
+This will create the `zoho_syncs` table to store the relationship between your Laravel models and Zoho records.
+
+### Basic Usage
+
+Add the `SyncsWithZoho` trait to any model and define the `getZohoModule()` method:
+
+```php
+use Asciisd\ZohoV8\Traits\SyncsWithZoho;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+
+class User extends Authenticatable
+{
+    use SyncsWithZoho;
+    
+    protected $fillable = ['name', 'email', 'phone'];
+    
+    /**
+     * Specify which Zoho module to sync with.
+     */
+    protected function getZohoModule(): string
+    {
+        return 'Contacts';
+    }
+}
+```
+
+Now, whenever you create, update, or delete a user, it will automatically sync with Zoho CRM Contacts:
+
+```php
+// Automatically creates a Contact in Zoho CRM (queued)
+$user = User::create([
+    'name' => 'John Doe',
+    'email' => 'john@example.com',
+    'phone' => '+1234567890',
+]);
+
+// Automatically updates the Contact in Zoho CRM (queued)
+$user->update(['phone' => '+0987654321']);
+
+// Automatically deletes the Contact in Zoho CRM (queued)
+$user->delete();
+```
+
+### Field Mapping
+
+By default, the trait will sync all fillable attributes using the same field names. To customize field mapping between your Laravel model and Zoho fields:
+
+```php
+class User extends Authenticatable
+{
+    use SyncsWithZoho;
+    
+    protected $fillable = ['name', 'email', 'phone', 'company'];
+    
+    protected function getZohoModule(): string
+    {
+        return 'Contacts';
+    }
+    
+    /**
+     * Map Laravel model fields to Zoho CRM fields.
+     */
+    protected function getZohoFieldMapping(): array
+    {
+        return [
+            'name' => 'Full_Name',
+            'email' => 'Email',
+            'phone' => 'Phone',
+            'company' => 'Account_Name',
+        ];
+    }
+}
+```
+
+### DemoAccount to Lead Example
+
+Here's how to sync a `DemoAccount` model with Zoho CRM `Leads`:
+
+```php
+use Asciisd\ZohoV8\Traits\SyncsWithZoho;
+use Illuminate\Database\Eloquent\Model;
+
+class DemoAccount extends Model
+{
+    use SyncsWithZoho;
+    
+    protected $fillable = [
+        'name',
+        'email',
+        'phone',
+        'country',
+        'company',
+    ];
+    
+    protected function getZohoModule(): string
+    {
+        return 'Leads';
+    }
+    
+    protected function getZohoFieldMapping(): array
+    {
+        return [
+            'name' => 'Last_Name',
+            'email' => 'Email',
+            'phone' => 'Phone',
+            'company' => 'Company',
+            // 'country' will map automatically with the same name
+        ];
+    }
+}
+```
+
+### Conditional Syncing
+
+Add custom logic to control when a model should sync:
+
+```php
+protected function shouldSyncToZoho(): bool
+{
+    // Only sync verified users
+    if ($this->email_verified_at === null) {
+        return false;
+    }
+    
+    // Only sync users with specific role
+    if (!$this->hasRole('customer')) {
+        return false;
+    }
+    
+    return parent::shouldSyncToZoho();
+}
+```
+
+### Temporarily Disable Syncing
+
+Use the `withoutZohoSync()` method to temporarily disable syncing:
+
+```php
+// Import data without syncing to Zoho
+User::withoutZohoSync(function () {
+    User::create(['name' => 'John', 'email' => 'john@example.com']);
+    User::create(['name' => 'Jane', 'email' => 'jane@example.com']);
+    // ... import 1000 more users
+});
+
+// Or disable for a single operation
+User::withoutZohoSync(fn () => $user->update(['internal_notes' => 'test']));
+```
+
+### Manual Sync
+
+Trigger a manual sync immediately (not queued):
+
+```php
+// Force immediate sync to Zoho
+$user->syncToZohoNow('create');
+$user->syncToZohoNow('update');
+```
+
+### Accessing Zoho Record ID
+
+Get the Zoho CRM record ID for any synced model:
+
+```php
+$user = User::find(1);
+
+// Get the Zoho record ID
+$zohoRecordId = $user->getZohoRecordId();
+
+// Access the full sync relationship
+$zohoSync = $user->zohoSync;
+echo $zohoSync->zoho_record_id;
+echo $zohoSync->zoho_module;
+echo $zohoSync->last_synced_at;
+```
+
+### Configuration
+
+Configure sync behavior in `config/zoho.php`:
+
+```php
+'sync' => [
+    // Enable or disable automatic syncing globally
+    'enabled' => env('ZOHO_SYNC_ENABLED', true),
+    
+    // Queue connection to use for sync jobs
+    'queue' => env('ZOHO_SYNC_QUEUE', 'default'),
+    
+    // Number of retry attempts
+    'retry_attempts' => env('ZOHO_SYNC_RETRY_ATTEMPTS', 3),
+    
+    // Backoff delays between retries (in seconds)
+    'retry_backoff' => [60, 120, 300], // 1 min, 2 min, 5 min
+],
+```
+
+### Environment Variables
+
+Add these to your `.env` file:
+
+```env
+# Enable/disable model syncing globally
+ZOHO_SYNC_ENABLED=true
+
+# Queue connection for sync jobs
+ZOHO_SYNC_QUEUE=default
+
+# Number of retry attempts before giving up
+ZOHO_SYNC_RETRY_ATTEMPTS=3
+```
+
+### How It Works
+
+1. **Model Event**: When you create/update/delete a model with the `SyncsWithZoho` trait
+2. **Job Dispatch**: A `SyncModelToZoho` job is dispatched to the queue
+3. **Field Transform**: Model data is transformed using your field mapping
+4. **API Call**: The job makes the appropriate Zoho CRM API call
+5. **Record Storage**: The Zoho record ID is stored in the `zoho_syncs` table
+6. **Retry Logic**: If the API call fails, it retries 3 times with exponential backoff
+7. **Logging**: Success and failures are logged for monitoring
+
+### Queue Workers
+
+Make sure you have queue workers running to process sync jobs:
+
+```bash
+# Run queue worker
+php artisan queue:work
+
+# Or use Supervisor/Laravel Horizon in production
+```
+
+### Error Handling
+
+Failed syncs are automatically retried 3 times. After all retries fail, errors are logged to your application log:
+
+```php
+// Check logs for sync failures
+tail -f storage/logs/laravel.log | grep "Zoho sync"
 ```
 
 ## Configuration

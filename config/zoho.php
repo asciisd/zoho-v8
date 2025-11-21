@@ -155,6 +155,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Max Fields Per Request
+    |--------------------------------------------------------------------------
+    |
+    | The maximum number of fields that can be requested in a single API call.
+    | Zoho CRM API v8 has a limit of 50 fields per request.
+    |
+    */
+    'max_fields_per_request' => env('ZOHO_MAX_FIELDS', 50),
+
+    /*
+    |--------------------------------------------------------------------------
     | Pagination
     |--------------------------------------------------------------------------
     |
@@ -165,5 +176,34 @@ return [
         'per_page' => env('ZOHO_PER_PAGE', 200),
         'max_records' => env('ZOHO_MAX_RECORDS', 200),
     ],
-];
 
+    /*
+    |--------------------------------------------------------------------------
+    | Model Sync Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Settings for automatic model synchronization with Zoho CRM modules.
+    |
+    */
+    'sync' => [
+        /*
+        | Enable or disable automatic model syncing globally.
+        */
+        'enabled' => env('ZOHO_SYNC_ENABLED', true),
+
+        /*
+        | The queue connection to use for sync jobs.
+        */
+        'queue' => env('ZOHO_SYNC_QUEUE', 'default'),
+
+        /*
+        | Number of times to retry failed sync jobs.
+        */
+        'retry_attempts' => env('ZOHO_SYNC_RETRY_ATTEMPTS', 3),
+
+        /*
+        | Backoff delays (in seconds) between retry attempts.
+        */
+        'retry_backoff' => [60, 120, 300], // 1 min, 2 min, 5 min
+    ],
+];

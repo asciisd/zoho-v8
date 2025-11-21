@@ -34,4 +34,3 @@ class ZohoException extends Exception
         ], 500);
     }
 }
-

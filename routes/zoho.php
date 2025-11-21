@@ -13,12 +13,15 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('zoho')->name('zoho.')->group(function () {
+    // OAuth callback handler
+    Route::get('callback', [ZohoWebhookController::class, 'callback'])
+        ->name('callback');
+
     // Webhook handler
     Route::post('webhook', [ZohoWebhookController::class, 'handle'])
         ->name('webhook');
-    
+
     // Webhook verification (for initial setup)
     Route::get('webhook', [ZohoWebhookController::class, 'verify'])
         ->name('webhook.verify');
 });
-
