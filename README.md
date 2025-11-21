@@ -1,7 +1,7 @@
 # Zoho CRM Laravel Package (API v8)
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/asciisd/zoho-v8.svg?style=flat-square)](https://packagist.org/packages/asciisd/zoho-v8)
-[![Total Downloads](https://img.shields.io/packagist/dt/asciisd/zoho-v8.svg?style=flat-square)](https://packagist.org/packages/asciisd/zoho-v8)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/asciisd/zoho-v8?style=flat-square)](https://packagist.org/packages/asciisd/zoho-v8)
+[![Total Downloads](https://img.shields.io/packagist/dt/asciisd/zoho-v8?style=flat-square)](https://packagist.org/packages/asciisd/zoho-v8)
 
 A minimal and elegant Laravel wrapper for Zoho CRM PHP SDK 8.0. This package provides a clean, Laravel-style interface for interacting with Zoho CRM API v8 with model-like classes, automatic token management, and webhook support.
 
