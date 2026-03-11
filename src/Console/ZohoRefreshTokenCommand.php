@@ -2,8 +2,6 @@
 
 namespace Asciisd\ZohoV8\Console;
 
-use Asciisd\ZohoV8\Auth\OAuthManager;
-use Asciisd\ZohoV8\Storage\TokenStorage;
 use Illuminate\Console\Command;
 
 class ZohoRefreshTokenCommand extends Command
@@ -32,7 +30,7 @@ class ZohoRefreshTokenCommand extends Command
         $this->newLine();
 
         try {
-            $oauth = new OAuthManager;
+            $oauth = app('zoho.oauth');
             $tokens = $oauth->refreshAccessToken();
 
             $this->info('✓ Token refreshed successfully!');
@@ -68,7 +66,7 @@ class ZohoRefreshTokenCommand extends Command
     {
         $this->line('🗑️  Clearing cached tokens...');
 
-        $storage = new TokenStorage;
+        $storage = app('zoho.storage');
         $storage->deleteTokens();
 
         $this->info('✓ Cache cleared');

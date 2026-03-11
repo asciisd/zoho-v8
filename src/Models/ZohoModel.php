@@ -343,12 +343,8 @@ abstract class ZohoModel
     {
         $module = static::getModuleApiName();
 
-        $queryParams = array_merge([
-            'fields' => static::getModuleFieldNames(),
-        ], $params);
-
-        $queryString = http_build_query($queryParams);
-        $response = static::makeRequest('get', "/{$module}/{$id}/{$relatedModule}?{$queryString}");
+        $queryString = ! empty($params) ? '?'.http_build_query($params) : '';
+        $response = static::makeRequest('get', "/{$module}/{$id}/{$relatedModule}{$queryString}");
 
         $records = $response['data'] ?? [];
 

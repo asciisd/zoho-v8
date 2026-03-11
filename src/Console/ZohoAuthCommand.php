@@ -2,8 +2,6 @@
 
 namespace Asciisd\ZohoV8\Console;
 
-use Asciisd\ZohoV8\Auth\OAuthManager;
-use Asciisd\ZohoV8\Storage\TokenStorage;
 use Illuminate\Console\Command;
 
 class ZohoAuthCommand extends Command
@@ -31,7 +29,11 @@ class ZohoAuthCommand extends Command
             'url' => $this->showAuthUrl(),
             'refresh' => $this->refreshToken(),
             'revoke' => $this->revokeToken(),
-            default => $this->error("Unknown action: {$action}"),
+            default => (function () use ($action) {
+                $this->error("Unknown action: {$action}");
+
+                return self::FAILURE;
+            })(),
         };
     }
 
@@ -40,8 +42,8 @@ class ZohoAuthCommand extends Command
      */
     protected function showStatus(): int
     {
-        $oauth = new OAuthManager;
-        $storage = new TokenStorage;
+        $oauth = app('zoho.oauth');
+        $storage = app('zoho.storage');
 
         $this->info('🔐 Zoho CRM Authentication Status');
         $this->newLine();
@@ -80,7 +82,7 @@ class ZohoAuthCommand extends Command
      */
     protected function showAuthUrl(): int
     {
-        $oauth = new OAuthManager;
+        $oauth = app('zoho.oauth');
 
         $scope = $this->ask(
             'Enter OAuth scope (press Enter for default)',
@@ -105,7 +107,7 @@ class ZohoAuthCommand extends Command
         $this->info('🔄 Refreshing access token...');
 
         try {
-            $oauth = new OAuthManager;
+            $oauth = app('zoho.oauth');
             $tokens = $oauth->refreshAccessToken();
 
             $this->newLine();
@@ -140,7 +142,7 @@ class ZohoAuthCommand extends Command
         $this->info('🗑️  Revoking access token...');
 
         try {
-            $oauth = new OAuthManager;
+            $oauth = app('zoho.oauth');
             $success = $oauth->revokeToken();
 
             if ($success) {

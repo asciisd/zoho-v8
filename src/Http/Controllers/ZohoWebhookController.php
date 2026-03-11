@@ -2,7 +2,6 @@
 
 namespace Asciisd\ZohoV8\Http\Controllers;
 
-use Asciisd\ZohoV8\Auth\OAuthManager;
 use Asciisd\ZohoV8\Events\ZohoRecordCreated;
 use Asciisd\ZohoV8\Events\ZohoRecordDeleted;
 use Asciisd\ZohoV8\Events\ZohoRecordUpdated;
@@ -146,8 +145,7 @@ class ZohoWebhookController extends Controller
                 ], 400);
             }
 
-            // Generate access token from grant token
-            $oauth = app(OAuthManager::class);
+            $oauth = app('zoho.oauth');
             $tokens = $oauth->generateAccessToken($code);
 
             Log::info('Zoho OAuth successful', [

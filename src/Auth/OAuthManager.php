@@ -109,6 +109,8 @@ class OAuthManager
             ]);
 
             return $tokens;
+        } catch (ZohoAuthException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Zoho token generation failed: '.$e->getMessage());
             throw ZohoAuthException::tokenGenerationFailed($e->getMessage());
@@ -158,6 +160,8 @@ class OAuthManager
             ]);
 
             return $tokens;
+        } catch (ZohoAuthException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Zoho token refresh failed: '.$e->getMessage());
             throw ZohoAuthException::tokenRefreshFailed($e->getMessage());

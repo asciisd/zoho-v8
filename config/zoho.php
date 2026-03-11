@@ -91,7 +91,7 @@ return [
     | The cache driver to use for token storage when using cache or both.
     |
     */
-    'cache_driver' => env('ZOHO_CACHE_DRIVER', env('CACHE_DRIVER', 'file')),
+    'cache_driver' => env('ZOHO_CACHE_DRIVER', 'file'),
 
     /*
     |--------------------------------------------------------------------------

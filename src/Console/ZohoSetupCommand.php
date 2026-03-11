@@ -2,7 +2,6 @@
 
 namespace Asciisd\ZohoV8\Console;
 
-use Asciisd\ZohoV8\Auth\OAuthManager;
 use Illuminate\Console\Command;
 
 class ZohoSetupCommand extends Command
@@ -41,7 +40,7 @@ class ZohoSetupCommand extends Command
         $this->info('✓ Configuration found');
         $this->newLine();
 
-        $oauth = new OAuthManager;
+        $oauth = app('zoho.oauth');
 
         // Check if already authenticated
         if ($oauth->isAuthenticated()) {
