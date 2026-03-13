@@ -224,6 +224,52 @@ class Customer extends Model
 }
 ```
 
+### Custom module support
+
+For custom Zoho modules (or modules whose API names don't follow the standard naming convention like `Contacts` -> `ZohoContact`), the `SyncModelToZoho` job resolves the ZohoModel class using a 3-step chain:
+
+1. **Model method** — override `getZohoModelClass()` on the Eloquent model to return a specific class
+2. **Config map** — add an entry in `zoho.modules` mapping the module API name to a class
+3. **Naming convention** — falls back to `Zoho` + singular module name
+
+```php
+// Option 1: Override getZohoModelClass() on the Eloquent model
+class Property extends Model
+{
+    use SyncsWithZoho;
+
+    public function getZohoModule(): string { return 'Property_Listings'; }
+
+    public function getZohoModelClass(): ?string
+    {
+        return \App\Zoho\ZohoPropertyListing::class;
+    }
+
+    public function getZohoFieldMapping(): array
+    {
+        return ['address' => 'Listing_Address', 'price' => 'Asking_Price'];
+    }
+}
+```
+
+```php
+// Option 2: Config map in config/zoho.php (no model changes needed)
+'modules' => [
+    'Property_Listings' => \App\Zoho\ZohoPropertyListing::class,
+],
+```
+
+The custom ZohoModel class extends `ZohoModel` and sets `MODULE_API_NAME`:
+
+```php
+use Asciisd\ZohoV8\Models\ZohoModel;
+
+class ZohoPropertyListing extends ZohoModel
+{
+    protected const MODULE_API_NAME = 'Property_Listings';
+}
+```
+
 ### Multi-model sync
 
 Multiple Eloquent models can sync to the same Zoho module. The polymorphic `ZohoSync` model (`zohoable_type` + `zohoable_id`) keeps each model's sync records independent — different field mappings, separate Zoho record IDs, no collisions.
@@ -376,6 +422,7 @@ Key settings in `config/zoho.php`:
 | `data_center` | `ZOHO_DATA_CENTER` | `US` | Data center region |
 | `environment` | `ZOHO_ENVIRONMENT` | `production` | production/sandbox/developer |
 | `token_storage` | `ZOHO_TOKEN_STORAGE` | `both` | cache/database/both |
+| `modules` | — | `[]` | Module-to-class map for custom modules |
 | `sync.enabled` | `ZOHO_SYNC_ENABLED` | `true` | Enable model sync |
 | `sync.queue` | `ZOHO_SYNC_QUEUE` | `default` | Queue for sync jobs |
 
@@ -435,7 +482,9 @@ tests/
 ├── TestCase.php                       # Base class — loads provider, config, migrations
 ├── Mocks/
 │   ├── TestCustomer.php              # Eloquent model with SyncsWithZoho + field mapping
-│   └── TestCustomerNoMapping.php     # Eloquent model with SyncsWithZoho, no mapping
+│   ├── TestCustomerNoMapping.php     # Eloquent model with SyncsWithZoho, no mapping
+│   ├── TestCustomModuleCustomer.php  # Eloquent model syncing to a custom Zoho module
+│   └── ZohoPropertyListing.php       # ZohoModel for custom module (Property_Listings)
 ├── database/migrations/              # Test-only migrations (test_customers table)
 ├── Unit/
 │   ├── Auth/OAuthManagerTest.php

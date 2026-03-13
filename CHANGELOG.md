@@ -2,6 +2,25 @@
 
 All notable changes to `zoho-v8` will be documented in this file.
 
+## 1.2.0 - 2026-03-13
+
+### Added
+
+- Custom module support with 3-step ZohoModel class resolution chain:
+  1. Model method — override `getZohoModelClass()` on Eloquent models to return a specific ZohoModel class
+  2. Config map — register module-to-class mappings in `zoho.modules` config
+  3. Naming convention — existing fallback (`Contacts` -> `ZohoContact`)
+- New `getZohoModelClass(): ?string` method on `SyncsWithZoho` trait
+- New `zoho.modules` config key for mapping custom module API names to ZohoModel classes
+- New `resolveZohoModelClass()` and `guessZohoModelClass()` methods on `SyncModelToZoho` job
+- Test mocks: `TestCustomModuleCustomer`, `ZohoPropertyListing` for custom module testing
+- Tests covering all three resolution paths and end-to-end custom module sync
+
+### Changed
+
+- `SyncModelToZoho` job now uses `resolveZohoModelClass()` instead of the previous `getZohoModelClass()` with its naive `rtrim($module, 's')` convention
+- Improved error message when ZohoModel class is not found, guiding users to the three resolution options
+
 ## 1.0.1 - 2025-11-21
 
 ### Fixed

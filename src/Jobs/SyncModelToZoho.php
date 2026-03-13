@@ -78,10 +78,12 @@ class SyncModelToZoho implements ShouldQueue
             }
 
             $zohoModule = $model->getZohoModule();
-            $zohoModelClass = $this->getZohoModelClass($zohoModule);
+            $zohoModelClass = $this->resolveZohoModelClass($model, $zohoModule);
 
             if (! class_exists($zohoModelClass)) {
-                throw new \Exception("Zoho model class {$zohoModelClass} not found for module {$zohoModule}");
+                throw new \Exception("Zoho model class {$zohoModelClass} not found for module {$zohoModule}. "
+                    .'Define getZohoModelClass() on your model, add it to the zoho.modules config, '
+                    .'or create a matching ZohoModel class.');
             }
 
             match ($this->operation) {
@@ -201,12 +203,37 @@ class SyncModelToZoho implements ShouldQueue
     }
 
     /**
-     * Get the Zoho model class for the given module name.
+     * Resolve the ZohoModel class for the given model and module.
+     *
+     * Resolution order:
+     * 1. Model's getZohoModelClass() method (explicit override)
+     * 2. Config map at zoho.modules.{Module_Name}
+     * 3. Naming convention: "Contacts" -> Asciisd\ZohoV8\Models\ZohoContact
      */
-    protected function getZohoModelClass(string $module): string
+    protected function resolveZohoModelClass(Model $model, string $module): string
     {
-        // Convert module name to class name
-        // e.g., "Contacts" -> "ZohoContact", "Leads" -> "ZohoLead"
+        if (method_exists($model, 'getZohoModelClass')) {
+            $fromModel = $model->getZohoModelClass();
+            if ($fromModel !== null) {
+                return $fromModel;
+            }
+        }
+
+        $fromConfig = config("zoho.modules.{$module}");
+        if ($fromConfig !== null) {
+            return $fromConfig;
+        }
+
+        return $this->guessZohoModelClass($module);
+    }
+
+    /**
+     * Guess the ZohoModel class from the module name using naming convention.
+     *
+     * Standard modules: "Contacts" -> ZohoContact, "Leads" -> ZohoLead
+     */
+    protected function guessZohoModelClass(string $module): string
+    {
         $className = 'Zoho'.rtrim($module, 's');
 
         return "Asciisd\\ZohoV8\\Models\\{$className}";

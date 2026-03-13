@@ -44,6 +44,16 @@ trait SyncsWithZoho
     abstract public function getZohoModule(): string;
 
     /**
+     * Get the ZohoModel class for this model's module.
+     * Override this to point to a custom ZohoModel subclass.
+     * Returns null to fall back to config map or naming convention.
+     */
+    public function getZohoModelClass(): ?string
+    {
+        return null;
+    }
+
+    /**
      * Get the field mapping between model attributes and Zoho fields.
      * Override this method to provide custom field mapping.
      */

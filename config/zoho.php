@@ -179,6 +179,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Module Class Map
+    |--------------------------------------------------------------------------
+    |
+    | Map Zoho module API names to their ZohoModel classes. Use this for
+    | custom modules or modules whose names don't follow the standard
+    | naming convention (e.g. "Contacts" -> ZohoContact).
+    |
+    | Example:
+    |   'Property_Listings' => App\Zoho\ZohoPropertyListing::class,
+    |   'Custom_Invoices'   => App\Zoho\ZohoCustomInvoice::class,
+    |
+    */
+    'modules' => [
+        // 'Module_API_Name' => \App\Zoho\YourZohoModel::class,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Model Sync Configuration
     |--------------------------------------------------------------------------
     |

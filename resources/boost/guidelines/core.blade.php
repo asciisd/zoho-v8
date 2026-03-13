@@ -97,6 +97,51 @@ class Customer extends Model
 </code-snippet>
 @endverbatim
 
+#### Custom Module Support
+
+For custom Zoho modules (or modules whose API names don't follow the standard naming convention), the package resolves ZohoModel classes using a 3-step chain:
+
+1. **Model method** — override `getZohoModelClass()` to return a specific class
+2. **Config map** — add an entry in `zoho.modules` mapping the module API name to a class
+3. **Naming convention** — falls back to `Zoho` + singular module name (e.g. `Contacts` -> `ZohoContact`)
+
+@verbatim
+<code-snippet name="Custom module via model method" lang="php">
+// Option 1: Override getZohoModelClass() on the Eloquent model
+class Property extends Model
+{
+    use SyncsWithZoho;
+
+    public function getZohoModule(): string { return 'Property_Listings'; }
+
+    public function getZohoModelClass(): ?string
+    {
+        return \App\Zoho\ZohoPropertyListing::class;
+    }
+
+    public function getZohoFieldMapping(): array
+    {
+        return ['address' => 'Listing_Address', 'price' => 'Asking_Price'];
+    }
+}
+
+// The custom ZohoModel class extends ZohoModel with the module API name
+class ZohoPropertyListing extends ZohoModel
+{
+    protected const MODULE_API_NAME = 'Property_Listings';
+}
+</code-snippet>
+@endverbatim
+
+@verbatim
+<code-snippet name="Custom module via config map" lang="php">
+// Option 2: Config map in config/zoho.php (no model changes needed)
+'modules' => [
+    'Property_Listings' => \App\Zoho\ZohoPropertyListing::class,
+],
+</code-snippet>
+@endverbatim
+
 #### Multi-Model Sync
 
 Multiple Eloquent models can sync to the same Zoho module. The polymorphic `ZohoSync` model (`zohoable_type` + `zohoable_id`) keeps each model's sync records independent — different field mappings, separate Zoho record IDs, no collisions.

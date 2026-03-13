@@ -6,6 +6,8 @@ use Asciisd\ZohoV8\Jobs\SyncModelToZoho;
 use Asciisd\ZohoV8\Models\ZohoSync;
 use Asciisd\ZohoV8\Tests\Mocks\TestCustomer;
 use Asciisd\ZohoV8\Tests\Mocks\TestCustomerNoMapping;
+use Asciisd\ZohoV8\Tests\Mocks\TestCustomModuleCustomer;
+use Asciisd\ZohoV8\Tests\Mocks\ZohoPropertyListing;
 use Asciisd\ZohoV8\Tests\TestCase;
 use Illuminate\Support\Facades\Queue;
 
@@ -218,5 +220,36 @@ class SyncsWithZohoTest extends TestCase
         ]);
 
         Queue::assertPushedOn('zoho-sync', SyncModelToZoho::class);
+    }
+
+    public function test_get_zoho_model_class_returns_null_by_default(): void
+    {
+        $customer = new TestCustomer;
+
+        $this->assertNull($customer->getZohoModelClass());
+    }
+
+    public function test_get_zoho_model_class_returns_class_when_overridden(): void
+    {
+        $customer = new TestCustomModuleCustomer;
+
+        $this->assertEquals(ZohoPropertyListing::class, $customer->getZohoModelClass());
+    }
+
+    public function test_custom_module_field_mapping(): void
+    {
+        $customer = TestCustomModuleCustomer::withoutZohoSync(fn () => TestCustomModuleCustomer::create([
+            'name' => 'Custom Property',
+            'email' => 'agent@realty.com',
+            'company' => 'Realty Corp',
+        ]));
+
+        $data = $customer->transformToZohoData();
+
+        $this->assertEquals('Custom Property', $data['Listing_Name']);
+        $this->assertEquals('agent@realty.com', $data['Agent_Email']);
+        $this->assertEquals('Realty Corp', $data['Agency']);
+        $this->assertArrayNotHasKey('name', $data);
+        $this->assertArrayNotHasKey('email', $data);
     }
 }

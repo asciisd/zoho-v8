@@ -3,8 +3,11 @@
 namespace Asciisd\ZohoV8\Tests\Unit\Jobs;
 
 use Asciisd\ZohoV8\Jobs\SyncModelToZoho;
+use Asciisd\ZohoV8\Models\ZohoContact;
 use Asciisd\ZohoV8\Models\ZohoSync;
 use Asciisd\ZohoV8\Tests\Mocks\TestCustomer;
+use Asciisd\ZohoV8\Tests\Mocks\TestCustomModuleCustomer;
+use Asciisd\ZohoV8\Tests\Mocks\ZohoPropertyListing;
 use Asciisd\ZohoV8\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -228,7 +231,7 @@ class SyncModelToZohoTest extends TestCase
         $job->handle();
     }
 
-    public function test_get_zoho_model_class_maps_modules_correctly(): void
+    public function test_naming_convention_fallback_maps_standard_modules(): void
     {
         $customer = TestCustomer::withoutZohoSync(fn () => TestCustomer::create([
             'name' => 'Module Map',
@@ -237,7 +240,7 @@ class SyncModelToZohoTest extends TestCase
 
         $job = new SyncModelToZoho($customer, 'create');
 
-        $reflection = new \ReflectionMethod($job, 'getZohoModelClass');
+        $reflection = new \ReflectionMethod($job, 'guessZohoModelClass');
         $reflection->setAccessible(true);
 
         $this->assertEquals(
@@ -254,5 +257,99 @@ class SyncModelToZohoTest extends TestCase
             'Asciisd\ZohoV8\Models\ZohoDeal',
             $reflection->invoke($job, 'Deals')
         );
+    }
+
+    public function test_resolve_uses_model_class_when_provided(): void
+    {
+        $customer = TestCustomModuleCustomer::withoutZohoSync(fn () => TestCustomModuleCustomer::create([
+            'name' => 'Custom Module',
+            'email' => 'custom@example.com',
+        ]));
+
+        $job = new SyncModelToZoho($customer, 'create');
+
+        $reflection = new \ReflectionMethod($job, 'resolveZohoModelClass');
+        $reflection->setAccessible(true);
+
+        $resolved = $reflection->invoke($job, $customer, 'Property_Listings');
+
+        $this->assertEquals(ZohoPropertyListing::class, $resolved);
+    }
+
+    public function test_resolve_uses_config_map_when_model_returns_null(): void
+    {
+        config(['zoho.modules.Contacts' => ZohoPropertyListing::class]);
+
+        $customer = TestCustomer::withoutZohoSync(fn () => TestCustomer::create([
+            'name' => 'Config Map',
+            'email' => 'configmap@example.com',
+        ]));
+
+        $job = new SyncModelToZoho($customer, 'create');
+
+        $reflection = new \ReflectionMethod($job, 'resolveZohoModelClass');
+        $reflection->setAccessible(true);
+
+        $resolved = $reflection->invoke($job, $customer, 'Contacts');
+
+        $this->assertEquals(ZohoPropertyListing::class, $resolved);
+    }
+
+    public function test_resolve_falls_back_to_naming_convention(): void
+    {
+        $customer = TestCustomer::withoutZohoSync(fn () => TestCustomer::create([
+            'name' => 'Fallback',
+            'email' => 'fallback@example.com',
+        ]));
+
+        $job = new SyncModelToZoho($customer, 'create');
+
+        $reflection = new \ReflectionMethod($job, 'resolveZohoModelClass');
+        $reflection->setAccessible(true);
+
+        $resolved = $reflection->invoke($job, $customer, 'Contacts');
+
+        $this->assertEquals(ZohoContact::class, $resolved);
+    }
+
+    public function test_custom_module_create_syncs_correctly(): void
+    {
+        Http::fake([
+            '*/crm/v8/Property_Listings' => Http::response([
+                'data' => [
+                    [
+                        'code' => 'SUCCESS',
+                        'details' => ['id' => 'custom-record-456'],
+                        'status' => 'success',
+                    ],
+                ],
+            ]),
+        ]);
+
+        $customer = TestCustomModuleCustomer::withoutZohoSync(fn () => TestCustomModuleCustomer::create([
+            'name' => 'Custom Listing',
+            'email' => 'listing@example.com',
+            'company' => 'Realty Co',
+        ]));
+
+        $job = new SyncModelToZoho($customer, 'create');
+        $job->handle();
+
+        $sync = ZohoSync::where('zohoable_type', TestCustomModuleCustomer::class)
+            ->where('zohoable_id', $customer->id)
+            ->first();
+
+        $this->assertNotNull($sync);
+        $this->assertEquals('custom-record-456', $sync->zoho_record_id);
+        $this->assertEquals('Property_Listings', $sync->zoho_module);
+
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+
+            return str_contains($request->url(), '/Property_Listings')
+                && $body['data'][0]['Listing_Name'] === 'Custom Listing'
+                && $body['data'][0]['Agent_Email'] === 'listing@example.com'
+                && $body['data'][0]['Agency'] === 'Realty Co';
+        });
     }
 }
