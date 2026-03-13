@@ -2,6 +2,20 @@
 
 All notable changes to `zoho-v8` will be documented in this file.
 
+## 1.2.1 - 2026-03-13
+
+### Fixed
+
+- Fixed `zoho:setup` command asking for grant token even when the OAuth callback route already handles token exchange
+- Grant codes are single-use, so the manual prompt would always fail when the redirect URI pointed to the app's `/zoho/callback` route
+
+### Changed
+
+- `zoho:setup` now auto-detects whether the redirect URI uses the app's callback route
+- When using the callback route, the command polls for token completion instead of prompting for manual input
+- Manual grant token prompt is preserved for non-callback redirect URIs (e.g., self-client setups)
+- Extracted `waitForCallback()`, `manualGrantToken()`, and `verifyConnection()` methods for cleaner separation of concerns
+
 ## 1.2.0 - 2026-03-13
 
 ### Added

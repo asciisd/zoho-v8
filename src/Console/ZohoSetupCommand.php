@@ -2,6 +2,7 @@
 
 namespace Asciisd\ZohoV8\Console;
 
+use Asciisd\ZohoV8\Auth\OAuthManager;
 use Illuminate\Console\Command;
 
 class ZohoSetupCommand extends Command
@@ -66,7 +67,46 @@ class ZohoSetupCommand extends Command
         $this->line($authUrl);
         $this->newLine();
 
-        // Get grant token
+        $usesAppCallback = str_contains(config('zoho.redirect_uri', ''), '/zoho/callback');
+
+        if ($usesAppCallback) {
+            return $this->waitForCallback($oauth);
+        }
+
+        return $this->manualGrantToken($oauth);
+    }
+
+    /**
+     * Wait for the OAuth callback route to handle the token exchange.
+     */
+    protected function waitForCallback(OAuthManager $oauth): int
+    {
+        $this->info('🔐 Step 2: Waiting for authorization...');
+        $this->line('After you authorize in the browser, the callback will save your tokens automatically.');
+        $this->newLine();
+
+        $maxAttempts = 60;
+        $interval = 2;
+
+        for ($i = 0; $i < $maxAttempts; $i++) {
+            if ($oauth->isAuthenticated()) {
+                return $this->verifyConnection($oauth);
+            }
+
+            sleep($interval);
+        }
+
+        $this->error('❌ Timed out waiting for authorization callback.');
+        $this->line('Make sure your app is running and the redirect URI is correctly configured.');
+
+        return self::FAILURE;
+    }
+
+    /**
+     * Prompt for a grant token and exchange it manually (for non-callback redirect URIs).
+     */
+    protected function manualGrantToken(OAuthManager $oauth): int
+    {
         $grantToken = $this->ask('Enter the grant token/code from the redirect URL');
 
         if (empty($grantToken)) {
@@ -75,50 +115,58 @@ class ZohoSetupCommand extends Command
             return self::FAILURE;
         }
 
-        // Generate access token
         $this->info('🔐 Step 2: Generating tokens...');
 
         try {
-            $tokens = $oauth->generateAccessToken($grantToken);
+            $oauth->generateAccessToken($grantToken);
 
-            $this->newLine();
-            $this->info('✓ Tokens generated successfully!');
-            $this->newLine();
-
-            // Show token info
-            $this->table(
-                ['Token Type', 'Value'],
-                [
-                    ['Access Token', substr($tokens['access_token'], 0, 20).'...'],
-                    ['Refresh Token', isset($tokens['refresh_token']) ? substr($tokens['refresh_token'], 0, 20).'...' : 'N/A'],
-                    ['Expires In', ($tokens['expires_in'] ?? 3600).' seconds'],
-                ]
-            );
-
-            $this->newLine();
-            $this->info('💡 Add this to your .env file for future use:');
-            $this->line('ZOHO_REFRESH_TOKEN='.($tokens['refresh_token'] ?? 'N/A'));
-            $this->newLine();
-
-            // Test connection
-            $this->info('🧪 Step 3: Testing connection...');
-
-            try {
-                $testToken = $oauth->getValidAccessToken();
-                $this->info('✓ Connection test successful!');
-                $this->newLine();
-
-                $this->info('🎉 Setup completed successfully!');
-                $this->line('You can now use Zoho CRM in your application.');
-
-                return self::SUCCESS;
-            } catch (\Exception $e) {
-                $this->error('❌ Connection test failed: '.$e->getMessage());
-
-                return self::FAILURE;
-            }
+            return $this->verifyConnection($oauth);
         } catch (\Exception $e) {
             $this->error('❌ Token generation failed: '.$e->getMessage());
+
+            return self::FAILURE;
+        }
+    }
+
+    /**
+     * Verify the connection works and display token info.
+     */
+    protected function verifyConnection(OAuthManager $oauth): int
+    {
+        $storage = app('zoho.storage');
+        $tokens = $storage->getTokens();
+
+        $this->newLine();
+        $this->info('✓ Tokens generated successfully!');
+        $this->newLine();
+
+        $this->table(
+            ['Token Type', 'Value'],
+            [
+                ['Access Token', substr($tokens['access_token'] ?? '', 0, 20).'...'],
+                ['Refresh Token', isset($tokens['refresh_token']) ? substr($tokens['refresh_token'], 0, 20).'...' : 'N/A'],
+                ['Expires In', ($tokens['expires_in'] ?? 3600).' seconds'],
+            ]
+        );
+
+        $this->newLine();
+        $this->info('💡 Add this to your .env file for future use:');
+        $this->line('ZOHO_REFRESH_TOKEN='.($tokens['refresh_token'] ?? 'N/A'));
+        $this->newLine();
+
+        $this->info('🧪 Step 3: Testing connection...');
+
+        try {
+            $oauth->getValidAccessToken();
+            $this->info('✓ Connection test successful!');
+            $this->newLine();
+
+            $this->info('🎉 Setup completed successfully!');
+            $this->line('You can now use Zoho CRM in your application.');
+
+            return self::SUCCESS;
+        } catch (\Exception $e) {
+            $this->error('❌ Connection test failed: '.$e->getMessage());
 
             return self::FAILURE;
         }
