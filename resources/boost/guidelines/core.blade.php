@@ -97,6 +97,41 @@ class Customer extends Model
 </code-snippet>
 @endverbatim
 
+#### Multi-Model Sync
+
+Multiple Eloquent models can sync to the same Zoho module. The polymorphic `ZohoSync` model (`zohoable_type` + `zohoable_id`) keeps each model's sync records independent — different field mappings, separate Zoho record IDs, no collisions.
+
+@verbatim
+<code-snippet name="Multiple models syncing to the same Zoho module" lang="php">
+// Both User and DemoAccount sync to Leads — each gets its own Zoho record
+class User extends Model
+{
+    use SyncsWithZoho;
+
+    public function getZohoModule(): string { return 'Leads'; }
+
+    public function getZohoFieldMapping(): array
+    {
+        return ['name' => 'Last_Name', 'email' => 'Email'];
+    }
+}
+
+class DemoAccount extends Model
+{
+    use SyncsWithZoho;
+
+    public function getZohoModule(): string { return 'Leads'; }
+
+    public function getZohoFieldMapping(): array
+    {
+        return ['company_name' => 'Company', 'contact_email' => 'Email'];
+    }
+}
+</code-snippet>
+@endverbatim
+
+Each model instance creates a separate record in Zoho. `withoutZohoSync` is scoped per-class. To converge multiple models on one Zoho record, customize `SyncModelToZoho` to use `upsert` with a duplicate check field.
+
 ### Webhook Events
 
 The package dispatches Laravel events for Zoho CRM webhooks. Listen for `ZohoWebhookReceived`, `ZohoRecordCreated`, `ZohoRecordUpdated`, or `ZohoRecordDeleted` events.

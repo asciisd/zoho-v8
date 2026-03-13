@@ -224,6 +224,42 @@ class Customer extends Model
 }
 ```
 
+### Multi-model sync
+
+Multiple Eloquent models can sync to the same Zoho module. The polymorphic `ZohoSync` model (`zohoable_type` + `zohoable_id`) keeps each model's sync records independent — different field mappings, separate Zoho record IDs, no collisions.
+
+```php
+// Both User and DemoAccount sync to Leads — each gets its own Zoho record
+class User extends Model
+{
+    use SyncsWithZoho;
+
+    public function getZohoModule(): string { return 'Leads'; }
+
+    public function getZohoFieldMapping(): array
+    {
+        return ['name' => 'Last_Name', 'email' => 'Email'];
+    }
+}
+
+class DemoAccount extends Model
+{
+    use SyncsWithZoho;
+
+    public function getZohoModule(): string { return 'Leads'; }
+
+    public function getZohoFieldMapping(): array
+    {
+        return ['company_name' => 'Company', 'contact_email' => 'Email'];
+    }
+}
+```
+
+Key details:
+- Each model instance creates a **separate** record in Zoho (1 User + 1 DemoAccount = 2 Leads)
+- `withoutZohoSync` is per-class — `User::withoutZohoSync(...)` does not affect `DemoAccount`
+- To converge multiple models on one Zoho record, customize `SyncModelToZoho` to use `upsert` with a duplicate check field (e.g. `Email`)
+
 ### Sync helpers
 
 ```php
