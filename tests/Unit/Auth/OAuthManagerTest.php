@@ -207,6 +207,33 @@ class OAuthManagerTest extends TestCase
         $this->assertEquals('refreshed-token', $token);
     }
 
+    public function test_get_valid_access_token_handles_corrupted_expires_at(): void
+    {
+        $storage = app('zoho.storage');
+        $storage->storeTokens([
+            'access_token' => 'corrupted-token',
+            'refresh_token' => 'refresh-token',
+            'expires_in' => 3600,
+        ]);
+
+        $cacheKey = 'zoho_tokens:default:US:production';
+        $cached = \Illuminate\Support\Facades\Cache::get($cacheKey);
+        $cached['expires_at'] = new \__PHP_Incomplete_Class;
+        \Illuminate\Support\Facades\Cache::put($cacheKey, $cached, 3600);
+
+        Http::fake([
+            'accounts.zoho.com/oauth/v2/token' => Http::response([
+                'access_token' => 'recovered-token',
+                'expires_in' => 3600,
+                'token_type' => 'Bearer',
+            ]),
+        ]);
+
+        $token = $this->oauth->getValidAccessToken();
+
+        $this->assertEquals('recovered-token', $token);
+    }
+
     public function test_revoke_token_sends_revoke_request(): void
     {
         Http::fake([

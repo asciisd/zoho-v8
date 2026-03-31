@@ -167,6 +167,18 @@ class TokenStorageTest extends TestCase
         $this->assertEquals('user-b-token', $this->storage->getAccessToken('user-b'));
     }
 
+    public function test_expires_at_is_stored_as_string(): void
+    {
+        $this->storage->storeTokens([
+            'access_token' => 'string-test',
+            'expires_in' => 3600,
+        ]);
+
+        $tokens = $this->storage->getTokens();
+
+        $this->assertIsString($tokens['expires_at']);
+    }
+
     public function test_database_fallback_when_cache_empty_in_both_mode(): void
     {
         config(['zoho.token_storage' => 'both']);

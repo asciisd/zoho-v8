@@ -183,12 +183,16 @@ class OAuthManager
 
         // Check if token is expired
         if (isset($tokens['expires_at'])) {
-            $expiresAt = is_string($tokens['expires_at'])
-                ? \Carbon\Carbon::parse($tokens['expires_at'])
-                : $tokens['expires_at'];
+            try {
+                $expiresAt = \Carbon\Carbon::parse($tokens['expires_at']);
+            } catch (\Throwable) {
+                $this->refreshAccessToken($tokens['refresh_token'] ?? null);
+                $tokens = $this->storage->getTokens($userIdentifier);
+
+                return $tokens['access_token'] ?? throw ZohoAuthException::tokenExpired();
+            }
 
             if ($expiresAt->isPast()) {
-                // Token expired, refresh it
                 $this->refreshAccessToken($tokens['refresh_token'] ?? null);
                 $tokens = $this->storage->getTokens($userIdentifier);
             }

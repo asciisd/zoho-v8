@@ -33,7 +33,7 @@ class TokenStorage
                 'access_token' => $tokens['access_token'] ?? null,
                 'refresh_token' => $tokens['refresh_token'] ?? null,
                 'expires_at' => isset($tokens['expires_in'])
-                    ? now()->addSeconds($tokens['expires_in'])
+                    ? now()->addSeconds($tokens['expires_in'])->toIso8601String()
                     : null,
                 'token_type' => $tokens['token_type'] ?? 'Bearer',
                 'grant_token' => $tokens['grant_token'] ?? null,
@@ -201,7 +201,7 @@ class TokenStorage
         return [
             'access_token' => $token->access_token,
             'refresh_token' => $token->refresh_token,
-            'expires_at' => $token->expires_at,
+            'expires_at' => $token->expires_at?->toIso8601String(),
             'token_type' => $token->token_type,
             'grant_token' => $token->grant_token,
             'data_center' => $token->data_center,
